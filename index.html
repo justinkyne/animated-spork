@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>The Tower</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="hud">
+      <div id="hud-left">
+        <span class="hud-label">FUNDS</span>
+        <span id="hud-money">$2,000,000</span>
+      </div>
+      <div id="hud-center">
+        <div id="hud-time">
+          <span id="hud-clock">5:00 AM</span>
+          <span id="hud-day">Mon · Day 1</span>
+          <span id="hud-season">Spring</span>
+        </div>
+        <div id="hud-speed">
+          <button class="spd-btn" id="btn-slower" title="Slower">◀◀</button>
+          <button class="spd-btn" id="btn-pause" title="Pause">⏸</button>
+          <button class="spd-btn" id="btn-faster" title="Faster">▶▶</button>
+        </div>
+      </div>
+      <div id="hud-right">
+        <div id="hud-rating">
+          <span id="hud-stars">★</span>
+          <span id="hud-pop">Pop: 0</span>
+        </div>
+        <div id="hud-income">+$<span id="hud-qincome">0</span>/qtr</div>
+      </div>
+    </div>
+
+    <div id="main">
+      <div id="sidebar">
+        <div class="sb-section">
+          <div class="sb-title">DEMOLISH</div>
+          <button class="tool-btn" data-tool="DEMOLISH" title="Demolish a room">🔨 Demolish</button>
+        </div>
+        <div class="sb-section">
+          <div class="sb-title">TRANSPORT</div>
+          <button class="tool-btn" data-tool="ELEVATOR" title="Drag vertically to set floor range">⬆ Elevator</button>
+          <button class="tool-btn" data-tool="EXPRESS" title="Express elevator between sky lobbies">🚀 Express</button>
+        </div>
+        <div class="sb-section">
+          <div class="sb-title">OFFICES</div>
+          <button class="tool-btn" data-tool="OFFICE" title="$50,000 · 4 wide">💼 Office</button>
+          <button class="tool-btn" data-tool="SKY_LOBBY" title="$200,000 · 8 wide · Required for express">☁ Sky Lobby</button>
+        </div>
+        <div class="sb-section">
+          <div class="sb-title">RESIDENTIAL</div>
+          <button class="tool-btn" data-tool="CONDO" title="$120,000 · 8 wide">🏠 Condo</button>
+          <button class="tool-btn" data-tool="HOTEL_ROOM" title="$80,000 · 4 wide">🛏 Hotel Room</button>
+        </div>
+        <div class="sb-section">
+          <div class="sb-title">FOOD &amp; RETAIL</div>
+          <button class="tool-btn" data-tool="SHOP" title="$100,000 · 8 wide">🛍 Shop</button>
+          <button class="tool-btn" data-tool="FAST_FOOD" title="$150,000 · 8 wide">🍔 Fast Food</button>
+          <button class="tool-btn" data-tool="RESTAURANT" title="$300,000 · 16 wide">🍽 Restaurant</button>
+        </div>
+        <div class="sb-section">
+          <div class="sb-title">SERVICES</div>
+          <button class="tool-btn" data-tool="MEDICAL" title="$500,000 · 16 wide · Reduces stress">🏥 Medical</button>
+          <button class="tool-btn" data-tool="SECURITY" title="$200,000 · 8 wide · Reduces crime">🔒 Security</button>
+          <button class="tool-btn" data-tool="HOUSEKEEPING" title="$150,000 · 8 wide · Needed for hotel">🧹 Housekeeping</button>
+        </div>
+        <div class="sb-section">
+          <div class="sb-title">PARKING</div>
+          <button class="tool-btn" data-tool="PARKING" title="$30,000 · 4 wide · Underground only">🚗 Parking</button>
+        </div>
+        <div class="sb-section" id="info-section">
+          <div class="sb-title">INFO</div>
+          <div id="info-box">Click a room to inspect it.</div>
+        </div>
+      </div>
+
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div id="statusbar">
+      <span id="status-text">Welcome to The Tower! Select a tool and click to build.</span>
+      <span id="cursor-pos"></span>
+    </div>
+  </div>
+
+  <script src="js/constants.js"></script>
+  <script src="js/time.js"></script>
+  <script src="js/room.js"></script>
+  <script src="js/elevator.js"></script>
+  <script src="js/person.js"></script>
+  <script src="js/tower.js"></script>
+  <script src="js/economy.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
