@@ -2,110 +2,57 @@
 
 class GameTime {
   constructor() {
-    this.hour     = 5;
-    this.minute   = 0;
-    this.day      = 1;         // absolute day number
-    this.dayOfWeek = 1;        // 1=Mon … 7=Sun
-    this.quarter  = 1;         // 1–4
-    this.year     = 1;
-    this.speed    = 1;         // multiplier
-    this.paused   = false;
+    this.totalMin = 6 * 60 + 30;   // start day 1 at 6:30 AM
+    this.speedIdx = 1;
+    this._fracMin = 0;
+    this.gameDt = 0;               // scaled ms this frame (for movement)
 
-    this._acc = 0;             // ms accumulator
-
-    // Callbacks set by game
-    this.onHour    = null;
-    this.onDay     = null;
+    this.onMinute = null;
+    this.onHour = null;
+    this.onDay = null;
     this.onQuarter = null;
   }
 
-  // ── accessors ──────────────────────────────────────────────
-  get isWeekend()   { return this.dayOfWeek >= 6; }
-  get isWeekday()   { return this.dayOfWeek <= 5; }
-  get isWorkHours() { return this.hour >= 9 && this.hour < 18; }
-  get isMorningRush() { return this.hour === 8 && this.minute < 30; }
-  get isEveningRush() { return this.hour === 17 && this.minute >= 30; }
+  get speed()    { return C.SPEEDS[this.speedIdx]; }
+  get paused()   { return this.speed === 0; }
+  get day()      { return Math.floor(this.totalMin / 1440) + 1; }
+  get hour()     { return Math.floor(this.totalMin / 60) % 24; }
+  get minute()   { return this.totalMin % 60; }
+  get hourFloat(){ return (this.totalMin % 1440) / 60; }
+  get quarter()  { return Math.floor((this.day - 1) / C.DAYS_PER_QUARTER) + 1; }
+  get year()     { return Math.floor((this.quarter - 1) / 4) + 1; }
+  get season()   { return C.SEASONS[(this.quarter - 1) % 4]; }
+  get dayName()  { return C.DAY_NAMES[(this.day - 1) % C.DAYS_PER_QUARTER]; }
+  get isWeekend(){ return this.dayName === 'SUN'; }
 
-  get seasonName() {
-    return ['Spring','Summer','Autumn','Winter'][this.quarter - 1];
+  get clockStr() {
+    const h = this.hour, m = this.minute;
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
   }
-  get dayName() {
-    return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][this.dayOfWeek - 1];
-  }
-
-  get timeString() {
-    const h    = this.hour % 12 || 12;
-    const m    = String(this.minute).padStart(2, '0');
-    const ampm = this.hour < 12 ? 'AM' : 'PM';
-    return `${h}:${m} ${ampm}`;
-  }
-
-  // 0–1 fraction through the day, for sky colour
-  get dayFraction() {
-    return (this.hour * 60 + this.minute) / 1440;
+  get dateStr() {
+    return `${this.dayName} · Day ${this.day} · Year ${this.year} · ${this.season}`;
   }
 
-  // ── update ─────────────────────────────────────────────────
-  update(dt) {
+  setSpeed(idx) { this.speedIdx = clamp(idx, 0, C.SPEEDS.length - 1); }
+  togglePause() {
+    if (this.paused) this.speedIdx = this._resumeIdx || 1;
+    else { this._resumeIdx = this.speedIdx; this.speedIdx = 0; }
+  }
+
+  update(dtReal) {
+    this.gameDt = dtReal * this.speed;
     if (this.paused) return;
-    this._acc += dt * this.speed;
 
-    const msPerMin = C.BASE_MS_PER_MIN;
-    while (this._acc >= msPerMin) {
-      this._acc -= msPerMin;
-      this._tick();
+    this._fracMin += this.gameDt / C.MS_PER_MIN;
+    while (this._fracMin >= 1) {
+      this._fracMin -= 1;
+      const prevHour = this.hour, prevDay = this.day, prevQ = this.quarter;
+      this.totalMin++;
+      if (this.onMinute) this.onMinute(this);
+      if (this.hour !== prevHour && this.onHour) this.onHour(this.hour, this);
+      if (this.day !== prevDay && this.onDay) this.onDay(this.day, this);
+      if (this.quarter !== prevQ && this.onQuarter) this.onQuarter(this.quarter, this);
     }
   }
-
-  _tick() {
-    this.minute++;
-    if (this.minute < 60) return;
-
-    this.minute = 0;
-    this.hour++;
-    if (this.onHour) this.onHour(this.hour, this);
-
-    if (this.hour < 24) return;
-
-    this.hour = 0;
-    this.day++;
-    this.dayOfWeek = (this.dayOfWeek % 7) + 1;
-    if (this.onDay) this.onDay(this.day, this);
-
-    // One quarter every 13 game-days
-    if (this.day % 13 === 0) {
-      this.quarter = (this.quarter % 4) + 1;
-      if (this.quarter === 1) this.year++;
-      if (this.onQuarter) this.onQuarter(this.quarter, this);
-    }
-  }
-
-  // ── helpers ────────────────────────────────────────────────
-  faster()  { this.speed = Math.min(this.speed * 2, 16); }
-  slower()  { this.speed = Math.max(this.speed / 2, 0.25); }
-  togglePause() { this.paused = !this.paused; }
-
-  // Interpolated sky colour at current time
-  skyColor() {
-    const stops = C.SKY;
-    const h = this.hour + this.minute / 60;
-    for (let i = 1; i < stops.length; i++) {
-      if (h <= stops[i][0]) {
-        const t = (h - stops[i-1][0]) / (stops[i][0] - stops[i-1][0]);
-        return lerpColor(stops[i-1][1], stops[i][1], t);
-      }
-    }
-    return stops[stops.length - 1][1];
-  }
-}
-
-function lerpColor(a, b, t) {
-  const pa = parseInt(a.slice(1), 16);
-  const pb = parseInt(b.slice(1), 16);
-  const ar = (pa >> 16) & 0xff, ag = (pa >> 8) & 0xff, ab = pa & 0xff;
-  const br = (pb >> 16) & 0xff, bg = (pb >> 8) & 0xff, bb = pb & 0xff;
-  const r = Math.round(ar + (br - ar) * t);
-  const g = Math.round(ag + (bg - ag) * t);
-  const bv = Math.round(ab + (bb - ab) * t);
-  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${bv.toString(16).padStart(2,'0')}`;
 }
