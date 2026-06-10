@@ -1,182 +1,174 @@
 'use strict';
 
-let _personSeq = 0;
+let _personSeq = 1;
 
-const PersonState = {
-  IDLE:             'IDLE',
-  WALKING:          'WALKING',
-  WAITING_ELEVATOR: 'WAITING_ELEVATOR',
-  IN_ELEVATOR:      'IN_ELEVATOR',
-  AT_DESTINATION:   'AT_DESTINATION',
-  LEAVING:          'LEAVING',
-};
-
+// Visible agents. Population is tracked statistically on rooms; agents
+// exist to make the tower feel alive and to measure real elevator waits.
+//
+// States: walk → wait → ride → (walk …) → inside → (reverse trip) → gone
 class Person {
-  constructor(type, homeFloor, destFloor, destColCenter) {
-    this.id            = ++_personSeq;
-    this.type          = type;  // 'WORKER'|'RESIDENT'|'GUEST'|'VISITOR'
+  constructor(type, floor, x) {
+    this.id = _personSeq++;
+    this.type = type;              // worker | resident | guest | shopper | visitor
+    this.floor = floor;
+    this.x = x;                    // world px
+    this.state = 'walk';
+    this.route = null;             // [{shaftId, from, to}]
+    this.legIdx = 0;
+    this.legTo = 0;                // current leg destination floor
+    this.targetX = x;
+    this.destRoom = null;          // Room ref (may be demolished — check!)
+    this.destFloor = floor;
+    this.destX = x;
+    this.afterArrive = 'enter';    // enter | exit
+    this.stayUntilMin = 0;         // when 'inside', leave at this time
+    this.waitStart = 0;
+    this.shaft = null;
+    this.car = null;
+    this.gone = false;
 
-    this.homeFloor     = homeFloor;
-    this.destFloor     = destFloor;
-    this.destColCenter = destColCenter;  // px x of destination room centre
-
-    // Current position in building px space
-    this.x     = destColCenter;  // start somewhere on their floor
-    this.floor = homeFloor;
-
-    this.state    = PersonState.IDLE;
-    this.stress   = 0;
-    this.waitTime = 0;
-
-    this.elevator = null;  // Elevator instance while riding
-    this._targetElev = null;
-
-    // Walking speed (px/s)
-    this.speed = 28 + Math.random() * 16;
-
-    // Colour by type
-    const colours = {
-      WORKER:   '#5588ff',
-      RESIDENT: '#44cc66',
-      GUEST:    '#cc8833',
-      VISITOR:  '#cc44cc',
-    };
-    this.color = colours[type] || '#aaaaaa';
-
-    // How long spent at destination before going home
-    this.stayDuration = 0;
-    this.stayTimer    = 0;
-    this.goingHome    = false;
+    this.speed = 60 + Math.random() * 30;   // world px per game-second
+    this.tint = Math.random();
+    this.bob = Math.random() * 10;
   }
 
-  // ── update (called every frame) ──────────────────────────
-  update(dtMs, tower) {
+  static COLORS = {
+    worker:   '#86b4f0',
+    resident: '#8fe0a0',
+    guest:    '#f0c876',
+    shopper:  '#e096d8',
+    visitor:  '#b0b8c8',
+  };
+  get color() { return Person.COLORS[this.type] || '#cccccc'; }
+
+  // ── Trip setup ────────────────────────────────────────────
+  // Returns false if there is no route (caller should not spawn).
+  startTrip(tower, destFloor, destX, afterArrive) {
+    this.afterArrive = afterArrive;
+    this.destFloor = destFloor;
+    this.destX = destX;
+
+    if (destFloor === this.floor) {
+      this.route = [];
+      this.legIdx = 0;
+      this.state = 'walk';
+      this.targetX = destX;
+      return true;
+    }
+
+    const route = tower.findRoute(this.floor, destFloor);
+    if (!route) return false;
+    this.route = route;
+    this.legIdx = 0;
+    this._walkToLeg(tower);
+    return true;
+  }
+
+  _walkToLeg(tower) {
+    const leg = this.route[this.legIdx];
+    const shaft = tower.shafts.get(leg.shaftId);
+    if (!shaft) { this.giveUp(tower, true); return; }
+    this.state = 'walk';
+    this.targetX = shaft.centerX;
+  }
+
+  // ── Per-frame update ──────────────────────────────────────
+  update(gameDt, tower, time) {
+    if (this.gone) return;
+
     switch (this.state) {
-      case PersonState.IDLE:             this._idle(tower); break;
-      case PersonState.WALKING:          this._walk(dtMs, tower); break;
-      case PersonState.WAITING_ELEVATOR: this._waitElev(dtMs, tower); break;
-      case PersonState.IN_ELEVATOR:      this._inElev(); break;
-      case PersonState.AT_DESTINATION:   this._atDest(dtMs, tower); break;
-      case PersonState.LEAVING:          this._leaving(dtMs, tower); break;
-    }
-
-    // Stress accumulates while waiting for elevator
-    if (this.state === PersonState.WAITING_ELEVATOR) {
-      this.waitTime += dtMs;
-      this.stress = Math.min(100, this.stress + 0.0015 * dtMs);
-    } else {
-      this.stress = Math.max(0, this.stress - 0.0003 * dtMs);
-    }
-  }
-
-  // ── state handlers ───────────────────────────────────────
-  _idle(tower) {
-    this._travelTo(this.destFloor, this.destColCenter, tower);
-  }
-
-  _walk(dtMs, tower) {
-    const dx = this._walkTargetX - this.x;
-    if (Math.abs(dx) < 1.5) {
-      this.x = this._walkTargetX;
-      // Reached walk target
-      if (this._targetElev) {
-        // At elevator entrance — start waiting
-        this.state = PersonState.WAITING_ELEVATOR;
-        this._targetElev.enqueuePassenger(this);
-      } else if (this.floor === this.destFloor && !this.goingHome) {
-        this.state = PersonState.AT_DESTINATION;
-        this.stayTimer = this.stayDuration;
-      } else if (this.goingHome && this.floor === this.homeFloor) {
-        tower.removePerson(this);
-      } else {
-        this.state = PersonState.IDLE;
+      case 'walk': {
+        const step = this.speed * (gameDt / 1000);
+        const diff = this.targetX - this.x;
+        if (Math.abs(diff) <= step) {
+          this.x = this.targetX;
+          this._onWalkArrive(tower, time);
+        } else {
+          this.x += Math.sign(diff) * step;
+        }
+        break;
       }
-    } else {
-      this.x += Math.sign(dx) * this.speed * (dtMs / 1000);
+      case 'wait': {
+        // Lose patience after ~100 game-minutes
+        if (time.totalMin - this.waitStart > 100) this.giveUp(tower);
+        break;
+      }
+      case 'ride': {
+        if (this.car) {
+          this.floor = this.car.floor;
+          this.x = this.shaft.centerX;
+        }
+        break;
+      }
+      case 'inside': {
+        if (time.totalMin >= this.stayUntilMin) this._leaveBuilding(tower);
+        break;
+      }
     }
   }
 
-  _waitElev(dtMs, tower) {
-    // If elevator never comes, give up after 5 min game-time
-    if (this.waitTime > 60_000) {
-      this.stress = 100;
-      // Try walking again (or just leave)
-      if (this._targetElev) this._targetElev.removeFromQueue(this);
-      this._targetElev = null;
-      tower.removePerson(this);
-    }
-  }
-
-  _inElev() {
-    if (this.elevator) {
-      // Snap position to elevator car
-      this.floor = this.elevator.carFloor;
-      this.x     = this.elevator.col * C.CELL_W + C.CELL_W / 2;
-    }
-  }
-
-  _atDest(dtMs, tower) {
-    // Small random drift
-    this.x += (Math.random() - 0.5) * 0.4;
-    this.stayTimer -= dtMs;
-    if (this.stayTimer <= 0) {
-      this.goingHome = true;
-      this.state     = PersonState.LEAVING;
-      this._travelTo(this.homeFloor, this.homeFloor === 1
-        ? (C.COLS / 2 * C.CELL_W) : this.destColCenter, tower);
-    }
-  }
-
-  _leaving(dtMs, tower) {
-    this._walk(dtMs, tower);
-  }
-
-  // ── travel helper ────────────────────────────────────────
-  _travelTo(targetFloor, targetX, tower) {
-    if (this.floor === targetFloor ||
-        (Number.isFinite(this.floor) && Math.round(this.floor) === targetFloor)) {
-      // Same floor — just walk
-      this._targetElev    = null;
-      this._walkTargetX   = targetX;
-      this.state          = PersonState.WALKING;
+  _onWalkArrive(tower, time) {
+    // More legs to ride?
+    if (this.route && this.legIdx < this.route.length) {
+      const leg = this.route[this.legIdx];
+      const shaft = tower.shafts.get(leg.shaftId);
+      if (!shaft) { this.giveUp(tower, true); return; }
+      this.legTo = leg.to;
+      this.state = 'wait';
+      this.waitStart = time.totalMin;
+      this.shaft = shaft;
+      shaft.enqueue(this, this.floor);
       return;
     }
 
-    // Need elevator
-    const elev = tower.findElevatorFor(this.x, this.floor, targetFloor);
-    if (!elev) {
-      // No elevator available — give up
-      tower.removePerson(this);
-      return;
-    }
-
-    this._targetElev  = elev;
-    this._walkTargetX = elev.col * C.CELL_W + C.CELL_W / 2;
-    this.state        = PersonState.WALKING;
-  }
-
-  // ── elevator callbacks ───────────────────────────────────
-  enterElevator(elev) {
-    this.elevator = elev;
-    this.state    = PersonState.IN_ELEVATOR;
-    this._targetElev = null;
-    this.waitTime = 0;
-  }
-
-  exitElevator(floor) {
-    this.floor    = Math.round(floor);
-    this.elevator = null;
-
-    if (this.goingHome && this.floor === this.homeFloor) {
-      this.state = PersonState.LEAVING;
-      this._walkTargetX = this.homeFloor === 1
-        ? (C.COLS / 2 * C.CELL_W) : this.destColCenter;
-    } else if (this.floor === this.destFloor) {
-      this._targetElev  = null;
-      this._walkTargetX = this.destColCenter;
-      this.state        = PersonState.WALKING;
+    // Final destination reached
+    if (this.afterArrive === 'exit') {
+      this.gone = true;
     } else {
-      this.state = PersonState.IDLE;
+      // Enter the room (or vanish if it was demolished)
+      const room = this.destRoom;
+      if (!room || !tower.rooms.has(room.id)) { this._leaveBuilding(tower); return; }
+      this.state = 'inside';
     }
   }
+
+  onBoard(shaft, car, time) {
+    this.state = 'ride';
+    this.shaft = shaft;
+    this.car = car;
+  }
+
+  onAlight(floor, tower) {
+    this.floor = floor;
+    this.car = null;
+    this.shaft = null;
+    this.legIdx++;
+    if (this.route && this.legIdx < this.route.length) {
+      this._walkToLeg(tower);
+    } else {
+      this.state = 'walk';
+      this.targetX = this.afterArrive === 'exit' ? this.destX
+        : (this.destRoom ? this.destRoom.centerX : this.destX);
+    }
+  }
+
+  _leaveBuilding(tower) {
+    this.destRoom = null;
+    const exitX = tower.entranceX(this.x);
+    if (!this.startTrip(tower, 1, exitX, 'exit')) this.despawnNow();
+  }
+
+  giveUp(tower, silent = false) {
+    if (this.state === 'wait' && this.shaft) {
+      this.shaft.dequeue(this);
+      if (!silent) tower.recordComplaint(this.floor);
+    }
+    this.shaft = null;
+    this.car = null;
+    this.route = null;
+    // Stranded above ground with no elevator — just fade out
+    this.despawnNow();
+  }
+
+  despawnNow() { this.gone = true; }
 }

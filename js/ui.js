@@ -1,85 +1,381 @@
 'use strict';
 
 class UI {
-  constructor() {
-    this.elMoney   = document.getElementById('hud-money');
-    this.elClock   = document.getElementById('hud-clock');
-    this.elDay     = document.getElementById('hud-day');
-    this.elSeason  = document.getElementById('hud-season');
-    this.elStars   = document.getElementById('hud-stars');
-    this.elPop     = document.getElementById('hud-pop');
-    this.elIncome  = document.getElementById('hud-qincome');
-    this.elStatus  = document.getElementById('status-text');
-    this.elCursor  = document.getElementById('cursor-pos');
-    this.elInfo    = document.getElementById('info-box');
-    this.elPause   = document.getElementById('btn-pause');
+  constructor(game) {
+    this.game = game;
+    this.el = {
+      money: document.getElementById('hud-money'),
+      flow: document.getElementById('hud-flow'),
+      clock: document.getElementById('hud-clock'),
+      date: document.getElementById('hud-date'),
+      stars: document.getElementById('hud-stars'),
+      pop: document.getElementById('hud-pop'),
+      progFill: document.getElementById('star-progress-fill'),
+      progLabel: document.getElementById('star-progress-label'),
+      status: document.getElementById('status-text'),
+      cursor: document.getElementById('cursor-pos'),
+      tools: document.getElementById('tools'),
+      toasts: document.getElementById('toasts'),
+      modal: document.getElementById('modal'),
+      modalCard: document.getElementById('modal-card'),
+      tabGoals: document.getElementById('tab-goals'),
+      tabInfo: document.getElementById('tab-info'),
+      tabStats: document.getElementById('tab-stats'),
+    };
 
-    this._flashTimer = 0;
-    this._flashMsg   = '';
+    this._displayMoney = game.economy.money;
+    this._statusTimer = 0;
+    this._lastStatsRefresh = 0;
+    this._goalsDirty = true;
+
+    this._buildSidebar();
+    this._wireTabs();
+    this._wireSpeedButtons();
+    this._wireSystemButtons();
   }
 
-  update(economy, tower, gameTime) {
-    // Money
-    this.elMoney.textContent = economy.formattedMoney;
-    this.elMoney.style.color = economy.money < 0 ? '#ff4444' : '#4cff88';
+  // ── Sidebar build buttons ─────────────────────────────────
+  _buildSidebar() {
+    const groups = new Map(C.CATEGORIES.map(c => [c, []]));
 
-    // Time
-    this.elClock.textContent  = gameTime.timeString;
-    this.elDay.textContent    = `${gameTime.dayName} · Day ${gameTime.day}`;
-    this.elSeason.textContent = gameTime.seasonName + ' Y' + gameTime.year;
+    groups.get('TRANSPORT').push(
+      { tool: 'ELEV_STANDARD', icon: '🛗', name: 'Elevator', costStr: `${fmt$(C.ELEVATORS.STANDARD.base)}+`, unlock: 1, desc: C.ELEVATORS.STANDARD.desc },
+      { tool: 'ELEV_EXPRESS', icon: '🚀', name: 'Express', costStr: `${fmt$(C.ELEVATORS.EXPRESS.base)}+`, unlock: 3, desc: C.ELEVATORS.EXPRESS.desc },
+    );
+    for (const [key, def] of Object.entries(C.ROOMS)) {
+      groups.get(def.cat).push({
+        tool: key, icon: def.icon, name: def.name,
+        costStr: fmt$(def.cost), unlock: def.unlock, desc: def.desc, def,
+      });
+    }
+    groups.get('TOOLS').push(
+      { tool: 'DEMOLISH', icon: '🔨', name: 'Demolish', costStr: `${Math.round(C.DEMOLISH_REFUND * 100)}% refund`, unlock: 1, desc: 'Remove a room or elevator shaft.' },
+    );
 
-    // Pause button
-    this.elPause.textContent = gameTime.paused ? '▶' : '⏸';
-    this.elPause.classList.toggle('active', gameTime.paused);
+    this.toolButtons = new Map();
+    for (const [cat, items] of groups) {
+      if (items.length === 0) continue;
+      const catEl = document.createElement('div');
+      catEl.className = 'tool-cat';
+      catEl.textContent = cat;
+      this.el.tools.appendChild(catEl);
 
-    // Rating
-    const rating = economy.rating(tower);
-    this.elStars.textContent = rating.label;
-    this.elPop.textContent   = `Pop: ${tower.population.toLocaleString()}`;
-
-    // Quarterly income estimate
-    this.elIncome.textContent = tower.quarterlyIncome().toLocaleString();
-  }
-
-  setStatus(msg) {
-    this.elStatus.textContent = msg;
-  }
-
-  flash(msg) {
-    this._flashMsg  = msg;
-    this._flashTimer = 120;
-    this.elStatus.textContent = msg;
-    this.elStatus.style.color = '#ffdd44';
-  }
-
-  tickFlash() {
-    if (this._flashTimer > 0) {
-      this._flashTimer--;
-      if (this._flashTimer === 0) {
-        this.elStatus.style.color = '';
+      for (const it of items) {
+        const btn = document.createElement('button');
+        btn.className = 'tool-btn';
+        btn.dataset.tool = it.tool;
+        btn.title = it.desc;
+        btn.innerHTML =
+          `<span class="t-icon">${it.icon}</span>` +
+          `<span class="t-body"><div class="t-name">${it.name}</div>` +
+          `<div class="t-cost">${it.costStr}</div></span>` +
+          `<span class="t-lock"></span>`;
+        btn.addEventListener('click', () => {
+          if (btn.classList.contains('locked')) {
+            sfx.error();
+            this.toast(`Locked — reach ${'★'.repeat(it.unlock)} to unlock ${it.name}.`, 'warn');
+            return;
+          }
+          sfx.click();
+          this.game.input.setTool(
+            this.game.input.activeTool === it.tool ? null : it.tool);
+        });
+        this.el.tools.appendChild(btn);
+        this.toolButtons.set(it.tool, { btn, unlock: it.unlock, def: it.def });
       }
     }
   }
 
-  setCursor(info) {
-    this.elCursor.textContent = info;
+  refreshToolLocks() {
+    const stars = this.game.stars;
+    const money = this.game.economy.money;
+    for (const [tool, { btn, unlock, def }] of this.toolButtons) {
+      btn.classList.toggle('locked', stars < unlock);
+      if (def) btn.classList.toggle('cant-afford', money < def.cost);
+      btn.classList.toggle('active', this.game.input.activeTool === tool);
+    }
   }
 
-  showRoomInfo(room) {
-    if (!room) {
-      this.elInfo.textContent = 'Click a room to inspect it.';
+  _wireTabs() {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.addEventListener('click', () => this.showTab(b.dataset.tab));
+    });
+  }
+
+  showTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.tab === name));
+    for (const t of ['goals', 'info', 'stats']) {
+      document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
+    }
+  }
+
+  _wireSpeedButtons() {
+    document.querySelectorAll('.spd-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        sfx.click();
+        this.game.time.setSpeed(parseInt(b.dataset.speed, 10));
+      });
+    });
+  }
+
+  _wireSystemButtons() {
+    document.getElementById('btn-help').addEventListener('click', () => this.showHelp());
+    document.getElementById('btn-sound').addEventListener('click', e => {
+      sfx.muted = !sfx.muted;
+      e.target.textContent = sfx.muted ? '🔇' : '🔊';
+    });
+    document.getElementById('btn-save').addEventListener('click', () => {
+      if (SaveSystem.save(this.game)) this.toast('Game saved.', 'success');
+    });
+    document.getElementById('btn-new').addEventListener('click', () => {
+      this.showModal(`
+        <h1>Start over?</h1>
+        <p>This wipes your current tower and starts a brand new game.</p>
+        <button class="modal-btn" id="m-confirm">New Game</button>
+        <button class="modal-btn ghost" id="m-cancel">Cancel</button>
+      `);
+      document.getElementById('m-confirm').addEventListener('click', () => {
+        SaveSystem.clear();
+        location.reload();
+      });
+      document.getElementById('m-cancel').addEventListener('click', () => this.hideModal());
+    });
+  }
+
+  // ── Per-frame HUD update ──────────────────────────────────
+  update() {
+    const g = this.game;
+
+    // Animated money counter
+    const target = g.economy.money;
+    const diff = target - this._displayMoney;
+    this._displayMoney += Math.abs(diff) < 1 ? diff : diff * 0.18;
+    this.el.money.textContent = fmt$(Math.round(this._displayMoney));
+    this.el.money.classList.toggle('broke', target < 0);
+
+    const net = g.economy.lastQuarterNet;
+    if (net !== 0) {
+      this.el.flow.textContent = `${net > 0 ? '+' : ''}${fmt$(net)} last rent day`;
+      this.el.flow.className = 'hud-sub ' + (net >= 0 ? 'gain' : 'loss');
+    }
+
+    this.el.clock.textContent = g.time.clockStr;
+    this.el.date.textContent = g.time.dateStr;
+
+    document.querySelectorAll('.spd-btn').forEach(b =>
+      b.classList.toggle('active', parseInt(b.dataset.speed, 10) === g.time.speedIdx));
+
+    // Stars + progress to next
+    const stars = g.stars;
+    this.el.stars.innerHTML =
+      '★'.repeat(stars) + `<span class="dim">${'★'.repeat(5 - stars)}</span>` +
+      (g.won ? ' 🏆' : '');
+    const pop = g.tower.population;
+    this.el.pop.textContent = `Population ${pop.toLocaleString()}`;
+
+    const next = C.RATINGS.find(r => r.stars === stars + 1);
+    if (next) {
+      this.el.progFill.style.width = `${clamp(pop / next.pop * 100, 0, 100)}%`;
+      const extra = [];
+      if (next.need) for (const k of Object.keys(next.need)) extra.push(C.ROOMS[k].name);
+      this.el.progLabel.textContent =
+        `${pop.toLocaleString()} / ${next.pop.toLocaleString()} pop for ${'★'.repeat(next.stars)}` +
+        (extra.length ? ` (+ ${extra.join(', ')})` : '');
+    } else {
+      this.el.progFill.style.width = '100%';
+      this.el.progLabel.textContent = g.won ? 'MEGATOWER' : 'Build The Crown!';
+    }
+
+    this.refreshToolLocks();
+
+    if (this._goalsDirty) { this._renderGoals(); this._goalsDirty = false; }
+
+    // Stats tab is cheap-ish but rebuild only twice a second
+    const now = performance.now();
+    if (now - this._lastStatsRefresh > 500) {
+      this._lastStatsRefresh = now;
+      if (!this.el.tabStats.classList.contains('hidden')) this._renderStats();
+    }
+  }
+
+  // ── Status bar ────────────────────────────────────────────
+  setStatus(msg) { this.el.status.textContent = msg; }
+  setCursor(msg) { this.el.cursor.textContent = msg; }
+
+  // ── Toasts ────────────────────────────────────────────────
+  toast(msg, type = 'info', ms = 4200) {
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    this.el.toasts.appendChild(t);
+    while (this.el.toasts.children.length > 5) this.el.toasts.firstChild.remove();
+    setTimeout(() => {
+      t.classList.add('fade');
+      setTimeout(() => t.remove(), 450);
+    }, ms);
+  }
+
+  // ── Goals panel ───────────────────────────────────────────
+  markGoalsDirty() { this._goalsDirty = true; }
+
+  _renderGoals() {
+    const goals = this.game.goals;
+    let html = '';
+    const cur = goals.currentGoal;
+    let shown = 0;
+    for (const d of GOAL_DEFS) {
+      const done = goals.done.has(d.id);
+      const isCur = cur && cur.id === d.id;
+      // show all completed + current + one teaser
+      if (!done && !isCur && shown > 0) break;
+      if (!done && !isCur) continue;
+      html += `<div class="goal ${done ? 'done' : 'current'}">` +
+        (done ? '<span class="g-check">✔</span>' : '') +
+        `<div class="g-title">${d.title}</div>` +
+        (d.reward ? `<div class="g-reward">Reward: ${fmt$(d.reward)}</div>` : '') +
+        `</div>`;
+      if (isCur) shown++;
+    }
+    if (!cur) html += `<div class="goal done"><div class="g-title">All goals complete — MEGATOWER!</div></div>`;
+
+    const ach = ACHIEVEMENT_DEFS.filter(d => this.game.goals.achieved.has(d.id));
+    html += `<div class="goal-section">ACHIEVEMENTS (${ach.length}/${ACHIEVEMENT_DEFS.length})</div>`;
+    for (const d of ach) {
+      html += `<div class="goal done"><span class="g-check">🏅</span><div class="g-title">${d.title}</div></div>`;
+    }
+    this.el.tabGoals.innerHTML = html;
+  }
+
+  // ── Stats panel ───────────────────────────────────────────
+  _renderStats() {
+    const g = this.game, t = g.tower;
+    const row = (k, v, cls = '') =>
+      `<div class="stat-row"><span>${k}</span><span class="v ${cls}">${v}</span></div>`;
+
+    let waits = [...t.shafts.values()].map(s => s.avgWait);
+    const avgWait = waits.length ? (waits.reduce((a, b) => a + b) / waits.length) : 0;
+
+    let html = '';
+    html += row('Population', t.population.toLocaleString());
+    html += row('Rooms', t.rooms.size);
+    html += row('Elevator shafts', t.shafts.size);
+    html += row('Avg elevator wait', `${avgWait.toFixed(1)} min`, avgWait > 15 ? 'neg' : 'pos');
+    html += row('Avg tenant mood', `${Math.round(t.avgEval())}/100`, t.avgEval() >= 55 ? 'pos' : 'neg');
+    html += row('Hotel rooms', t.countRooms('HOTEL') + t.countRooms('SUITE'));
+    html += row('Housekeeping capacity', `${t.housekeepingCapacity()}/day`);
+    html += row('Lifetime earned', fmt$(g.economy.lifetimeEarned), 'pos');
+    html += row('Best rent day', fmt$(g.economy.bestRentDay));
+
+    if (g.economy.lastBreakdown.length) {
+      html += `<div class="goal-section">LAST RENT DAY</div>`;
+      html += row('Income', fmt$(g.economy.lastQuarterIncome), 'pos');
+      html += row('Upkeep', fmt$(-g.economy.lastQuarterExpense), 'neg');
+      for (const b of g.economy.lastBreakdown.slice(0, 10)) {
+        html += row(b.label, fmt$(b.amount), b.amount >= 0 ? 'pos' : 'neg');
+      }
+    }
+    this.el.tabStats.innerHTML = html;
+  }
+
+  // ── Inspector ─────────────────────────────────────────────
+  showInfo(sel) {
+    if (!sel) {
+      this.el.tabInfo.innerHTML = '<div class="muted">Click anything in the tower to inspect it.</div>';
       return;
     }
-    this.elInfo.innerHTML = room.infoText()
-      .split('\n')
-      .map(l => `<div>${l}</div>`)
-      .join('');
+    this.showTab('info');
+    let html = '';
+    if (sel.kind === 'room') {
+      const r = sel.obj, def = r.def;
+      html += `<h3>${def.icon} ${def.name}</h3>`;
+      html += `<div class="muted">Floor ${r.floor < 0 ? 'B' + (-r.floor) : r.floor}</div>`;
+      if (r.kind === 'service' || r.kind === 'special') {
+        html += `<p style="margin:6px 0">${def.desc}</p>`;
+        if (def.maint) html += `<div>Upkeep: ${fmt$(def.maint)}/rent day</div>`;
+      } else {
+        if (r.noAccess) {
+          html += `<div style="color:var(--red);margin:6px 0">⚠ No elevator access!</div>`;
+        } else {
+          html += `<div class="eval-bar"><div style="width:${r.eval}%;background:${r.moodColor}"></div></div>`;
+          html += `<div>Mood: <b style="color:${r.moodColor}">${Math.round(r.eval)}/100</b></div>`;
+        }
+        if (r.kind === 'hotel') {
+          html += `<div>${r.dirty ? '🧺 Dirty — needs housekeeping' : r.guestsTonight > 0 ? `Guests tonight: ${r.guestsTonight}` : 'Awaiting guests'}</div>`;
+          html += `<div>Rate: ${fmt$(def.nightly)}/night</div>`;
+        } else {
+          html += `<div>${r.occupied ? (r.struggling ? '📉 Struggling (needs more traffic)' : 'Occupied') : 'Vacant'}</div>`;
+          if (def.rent) html += `<div>Rent: ${fmt$(def.rent)}/rent day</div>`;
+          if (def.needsPop) html += `<div>Needs population: ${def.needsPop}+</div>`;
+        }
+        if (def.pop) html += `<div>Residents/workers: ${r.occupied ? def.pop : 0}/${def.pop}</div>`;
+      }
+      html += `<button class="danger-btn" id="info-demolish">🔨 Demolish (${fmt$(Math.round(def.cost * C.DEMOLISH_REFUND))} back)</button>`;
+    } else if (sel.kind === 'shaft') {
+      const s = sel.obj, def = s.def;
+      html += `<h3>🛗 ${def.name}</h3>`;
+      html += `<div class="muted">Floors ${s.bottom < 0 ? 'B' + (-s.bottom) : s.bottom} – ${s.top}</div>`;
+      html += `<div>Cars: ${s.cars.length} · Capacity ${def.capacity} each</div>`;
+      html += `<div>Riding now: ${s.totalPassengers()}</div>`;
+      html += `<div>Avg wait: ${s.avgWait.toFixed(1)} min</div>`;
+      html += `<div>Upkeep: ${fmt$(def.maint)}/rent day</div>`;
+      html += `<button class="danger-btn" id="info-demolish">🔨 Demolish (${fmt$(Math.round(s.cost() * C.DEMOLISH_REFUND))} back)</button>`;
+    }
+    this.el.tabInfo.innerHTML = html;
+    const btn = document.getElementById('info-demolish');
+    if (btn) btn.addEventListener('click', () => this.game.demolishSelected());
   }
 
-  // Highlight selected toolbar button
-  selectTool(toolName) {
-    document.querySelectorAll('.tool-btn').forEach(btn => {
-      btn.classList.toggle('selected', btn.dataset.tool === toolName);
-    });
+  // ── Modals ────────────────────────────────────────────────
+  showModal(html) {
+    this.el.modalCard.innerHTML = html;
+    this.el.modal.classList.remove('hidden');
+  }
+  hideModal() { this.el.modal.classList.add('hidden'); }
+
+  showStarUp(stars) {
+    this.showModal(`
+      <h1 class="gold">RATING UP!</h1>
+      <div class="big-stars">${'★'.repeat(stars)}<span style="color:#3a4660">${'★'.repeat(5 - stars)}</span></div>
+      <p>Your tower earned its ${['', 'first', 'second', 'third', 'fourth', 'fifth'][stars]} star.<br>
+      New rooms are now available in the build menu!</p>
+      <button class="modal-btn" id="m-ok">Keep Building</button>
+    `);
+    document.getElementById('m-ok').addEventListener('click', () => this.hideModal());
+  }
+
+  showWin() {
+    this.showModal(`
+      <h1 class="gold">🏆 MEGATOWER 🏆</h1>
+      <div class="big-stars">★★★★★</div>
+      <p>The Crown shines from your skyline. You built the ultimate tower —
+      every elevator hums, every tenant smiles.</p>
+      <p>The city is yours. Keep building, or start a fresh skyline.</p>
+      <button class="modal-btn" id="m-ok">Continue</button>
+    `);
+    document.getElementById('m-ok').addEventListener('click', () => this.hideModal());
+  }
+
+  showHelp() {
+    this.showModal(`
+      <h1>SKYRISE</h1>
+      <p>Build a skyscraper city-in-the-sky. Keep tenants happy, elevators
+      fast, and your stars climbing.</p>
+      <div class="help-grid">
+        <b>Left drag</b><span>Pan the camera (with no tool selected)</span>
+        <b>Mouse wheel</b><span>Zoom</span>
+        <b>Left click</b><span>Build with selected tool / inspect</span>
+        <b>Drag vertically</b><span>Set elevator range (elevator tool)</span>
+        <b>Drag horizontally</b><span>Paint multiple rooms in a row</span>
+        <b>Right click / Esc</b><span>Cancel tool</span>
+        <b>Space</b><span>Pause</span>
+        <b>1–5 keys</b><span>Game speed</span>
+      </div>
+      <p>Tips: rent is collected every 4th day. Offices need elevators before
+      anyone moves in. Hotels need Housekeeping. Express elevators only stop
+      at Sky Lobbies — that's how you go tall.</p>
+      <button class="modal-btn" id="m-ok">Let's Build</button>
+    `);
+    document.getElementById('m-ok').addEventListener('click', () => this.hideModal());
   }
 }

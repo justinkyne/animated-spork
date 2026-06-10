@@ -2,54 +2,81 @@
 
 class Economy {
   constructor(startMoney) {
-    this.money          = startMoney;
-    this.totalIncome    = 0;
-    this.totalExpenses  = 0;
+    this.money = startMoney;
+    this.lastQuarterNet = 0;
     this.lastQuarterIncome = 0;
+    this.lastQuarterExpense = 0;
+    this.lifetimeEarned = 0;
+    this.lastBreakdown = [];      // [{label, amount}]
+    this.bestRentDay = 0;
+    this.hotelEarnedTonight = 0;
 
-    // Log of events
-    this.log = [];
+    this.onEarn = null;           // (amount, label) hook for UI particles
   }
 
-  spend(amount, label) {
-    if (this.money < amount) return false;
-    this.money         -= amount;
-    this.totalExpenses += amount;
-    this._log(`-$${amount.toLocaleString()}`, label, '#ff6666');
-    return true;
+  canAfford(n) { return this.money >= n; }
+
+  spend(n) {
+    this.money -= n;
   }
 
-  earn(amount, label) {
-    this.money       += amount;
-    this.totalIncome += amount;
-    this._log(`+$${amount.toLocaleString()}`, label, '#66ff88');
+  earn(n, label) {
+    this.money += n;
+    this.lifetimeEarned += n;
+    if (this.onEarn && n > 0) this.onEarn(n, label);
   }
 
-  _log(amount, label, color) {
-    this.log.push({ amount, label, color, ts: Date.now() });
-    if (this.log.length > 40) this.log.shift();
-  }
+  // Rent day: collect rent from every occupied room, pay upkeep on
+  // services and elevators. Returns {income, expense, net, breakdown}.
+  collectQuarter(tower) {
+    const by = new Map();
+    const add = (label, amt) => by.set(label, (by.get(label) || 0) + amt);
 
-  // Called each quarter by the game
-  collectRent(tower) {
-    const income = tower.quarterlyIncome();
-    this.lastQuarterIncome = income;
-    if (income > 0) this.earn(income, 'Quarterly rent');
-    return income;
-  }
-
-  // Rating based on population + facilities
-  rating(tower) {
-    const pop = tower.population;
-    const ratings = C.RATINGS;
-    let r = ratings[0];
-    for (const entry of ratings) {
-      if (pop >= entry.pop) r = entry;
+    let income = 0, expense = 0;
+    for (const r of tower.rooms.values()) {
+      const rent = r.quarterlyRent();
+      if (rent > 0) { income += rent; add(r.name, rent); }
+      const up = r.quarterlyUpkeep();
+      if (up > 0) { expense += up; add(r.name + ' upkeep', -up); }
     }
-    return r;
+    for (const s of tower.shafts.values()) {
+      const m = s.def.maint;
+      expense += m;
+      add(s.def.name + ' upkeep', -m);
+    }
+
+    const net = income - expense;
+    this.money += net;
+    if (income > 0) this.lifetimeEarned += income;
+    this.lastQuarterIncome = income;
+    this.lastQuarterExpense = expense;
+    this.lastQuarterNet = net;
+    this.bestRentDay = Math.max(this.bestRentDay, income);
+    this.lastBreakdown = [...by.entries()]
+      .map(([label, amount]) => ({ label, amount }))
+      .sort((a, b) => b.amount - a.amount);
+
+    return { income, expense, net, breakdown: this.lastBreakdown };
   }
 
-  get formattedMoney() {
-    return '$' + Math.abs(this.money).toLocaleString();
+  serialize() {
+    return {
+      money: this.money,
+      net: this.lastQuarterNet,
+      inc: this.lastQuarterIncome,
+      exp: this.lastQuarterExpense,
+      life: this.lifetimeEarned,
+      best: this.bestRentDay,
+    };
+  }
+
+  static deserialize(d) {
+    const e = new Economy(d.money ?? C.START_MONEY);
+    e.lastQuarterNet = d.net || 0;
+    e.lastQuarterIncome = d.inc || 0;
+    e.lastQuarterExpense = d.exp || 0;
+    e.lifetimeEarned = d.life || 0;
+    e.bestRentDay = d.best || 0;
+    return e;
   }
 }

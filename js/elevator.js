@@ -1,162 +1,175 @@
 'use strict';
 
-let _elevSeq = 0;
+let _shaftSeq = 1;
 
-class Elevator {
-  constructor(col, bottomFloor, topFloor, type = 'STANDARD') {
-    this.id          = ++_elevSeq;
-    this.col         = col;
-    this.bottomFloor = bottomFloor;
-    this.topFloor    = topFloor;
-    this.type        = type;   // 'STANDARD' | 'EXPRESS' | 'SERVICE'
+class ElevatorShaft {
+  constructor(type, col, bottom, top) {
+    this.id = _shaftSeq++;
+    this.type = type;            // STANDARD | EXPRESS
+    this.col = col;              // left column; C.ELEV_W cells wide
+    this.bottom = bottom;
+    this.top = top;
 
-    // Car position (floor number, can be fractional while moving)
-    this.carFloor  = bottomFloor;
-    this.direction = 0;      // 1=up, -1=down, 0=idle
-    this.state     = 'IDLE'; // 'IDLE' | 'MOVING' | 'LOADING'
-    this.doorTimer = 0;      // ms remaining with doors open
+    // One car per ~12 floors of span, max 3
+    const n = clamp(1 + Math.floor(this.span / 12), 1, 3);
+    this.cars = [];
+    for (let i = 0; i < n; i++) {
+      this.cars.push({
+        floor: bottom + Math.floor((this.span * i) / n),
+        target: null,
+        doorT: 0,            // game-ms doors remain open
+        passengers: [],
+      });
+    }
 
-    // Passengers (Person instances)
-    this.passengers    = [];
-    this.maxPassengers = C.ELEV_MAX_PASSENGERS;
-
-    // Pending floor requests (Set of floor numbers)
-    this.requests = new Set();
-
-    // Waiting queues: floor → [Person, …]
-    this.waitingQueues = {};
+    this.waiting = new Map();    // floor -> Person[]
+    this.claims = new Map();     // floor -> car index (pickup claims)
+    this.avgWait = 4;            // rolling average wait, game-minutes
   }
 
-  // ── basic info ────────────────────────────────────────────
-  get floorCount() { return this.topFloor - this.bottomFloor + 1; }
-  serves(floor)    { return floor >= this.bottomFloor && floor <= this.topFloor; }
+  get def()  { return C.ELEVATORS[this.type]; }
+  get span() { return this.top - this.bottom; }
+  get centerX() { return (this.col + C.ELEV_W / 2) * C.CELL_W; }
 
-  cost() {
-    return C.ELEV_BASE_COST + this.floorCount * C.ELEV_PER_FLOOR;
+  cost() { return this.def.base + this.def.perFloor * this.span; }
+
+  inRange(floor) {
+    if (floor < this.bottom || floor > this.top) return false;
+    if (floor === 0) return false;
+    return true;
   }
 
-  // ── external API ─────────────────────────────────────────
-  addRequest(floor) {
-    if (this.serves(floor)) this.requests.add(floor);
+  // Express elevators only stop at lobby, basements, sky lobbies & endpoints
+  servesFloor(floor, tower) {
+    if (!this.inRange(floor)) return false;
+    if (this.type !== 'EXPRESS') return true;
+    return floor === 1 || floor < 0 || floor === this.bottom ||
+           floor === this.top || tower.hasSkyLobby(floor);
   }
 
-  enqueuePassenger(person) {
-    const f = person.floor;
-    if (!this.waitingQueues[f]) this.waitingQueues[f] = [];
-    this.waitingQueues[f].push(person);
-    this.addRequest(f);
+  enqueue(person, floor) {
+    if (!this.waiting.has(floor)) this.waiting.set(floor, []);
+    this.waiting.get(floor).push(person);
   }
 
-  removeFromQueue(person) {
-    const q = this.waitingQueues[person.floor];
+  dequeue(person) {
+    const q = this.waiting.get(person.floor);
     if (!q) return;
     const i = q.indexOf(person);
-    if (i !== -1) q.splice(i, 1);
+    if (i >= 0) q.splice(i, 1);
+    if (q.length === 0) this.waiting.delete(person.floor);
   }
 
-  // ── update (called each animation frame) ─────────────────
-  update(dtMs) {
-    if (this.state === 'LOADING') {
-      this.doorTimer -= dtMs;
-      if (this.doorTimer <= 0) {
-        this.doorTimer = 0;
-        this.state = 'IDLE';
-      }
-      return;
-    }
-
-    if (this.state === 'IDLE') {
-      this._chooseNextTarget();
-    }
-
-    if (this.state === 'MOVING') {
-      const spd  = C.ELEV_SPEED * (dtMs / 1000);
-      const dest = this._peekTarget();
-      if (dest === null) { this.state = 'IDLE'; this.direction = 0; return; }
-
-      const diff = dest - this.carFloor;
-      if (Math.abs(diff) <= spd + 0.001) {
-        this.carFloor = dest;
-        this._arrivedAt(dest);
-      } else {
-        this.carFloor += spd * this.direction;
-      }
-    }
+  queueIndex(person) {
+    const q = this.waiting.get(person.floor);
+    return q ? q.indexOf(person) : 0;
   }
 
-  _chooseNextTarget() {
-    if (this.requests.size === 0) { this.direction = 0; return; }
-
-    // Find first request in current direction; if none, switch direction
-    let target = this._nextInDirection(this.direction);
-    if (target === null) {
-      this.direction *= -1;
-      target = this._nextInDirection(this.direction);
-    }
-    if (target === null) {
-      // Initial direction: pick closest
-      let best = null, bestDist = Infinity;
-      for (const f of this.requests) {
-        const d = Math.abs(f - this.carFloor);
-        if (d < bestDist) { bestDist = d; best = f; }
-      }
-      if (best === null) return;
-      target = best;
-      this.direction = target > this.carFloor ? 1 : -1;
-    }
-
-    this.state = 'MOVING';
+  totalPassengers() {
+    return this.cars.reduce((s, c) => s + c.passengers.length, 0);
   }
 
-  _nextInDirection(dir) {
-    if (dir === 0) return null;
+  _waitingFloors(exceptCarIdx) {
+    const floors = [];
+    for (const [f, q] of this.waiting) {
+      if (q.length === 0) continue;
+      const claim = this.claims.get(f);
+      if (claim !== undefined && claim !== exceptCarIdx) continue;
+      floors.push(f);
+    }
+    return floors;
+  }
+
+  _pickTarget(car, idx) {
+    const cands = new Set(car.passengers.map(p => p.legTo));
+    for (const f of this._waitingFloors(idx)) {
+      if (car.passengers.length < this.def.capacity) cands.add(f);
+    }
     let best = null, bestDist = Infinity;
-    for (const f of this.requests) {
-      const diff = (f - this.carFloor) * dir;
-      if (diff > 0 && diff < bestDist) { bestDist = diff; best = f; }
+    for (const f of cands) {
+      const d = Math.abs(f - car.floor);
+      if (d < bestDist) { bestDist = d; best = f; }
     }
     return best;
   }
 
-  _peekTarget() {
-    return this._nextInDirection(this.direction);
+  update(gameDt, tower, time) {
+    const dtSec = gameDt / 1000;
+
+    this.cars.forEach((car, idx) => {
+      // Doors open: count down, then continue
+      if (car.doorT > 0) {
+        car.doorT -= gameDt;
+        if (car.doorT > 0) return;
+        car.doorT = 0;
+      }
+
+      // Choose a target if we don't have one
+      if (car.target === null) {
+        car.target = this._pickTarget(car, idx);
+        if (car.target === null) return;        // idle
+        if (this.waiting.has(car.target)) this.claims.set(car.target, idx);
+      }
+
+      // Move toward target
+      const step = this.def.speed * dtSec;
+      const diff = car.target - car.floor;
+      if (Math.abs(diff) <= step) {
+        // Arrived
+        car.floor = car.target;
+        car.target = null;
+        this.claims.delete(car.floor);
+        this._exchange(car, tower, time);
+        car.doorT = 1400;                       // dwell with doors open
+      } else {
+        car.floor += Math.sign(diff) * step;
+      }
+    });
   }
 
-  _arrivedAt(floor) {
-    this.requests.delete(floor);
-    this.state     = 'LOADING';
-    this.doorTimer = 2200; // ms doors stay open
+  _exchange(car, tower, time) {
+    const floor = Math.round(car.floor);
 
-    // Drop off passengers destined for this floor
-    const leaving = this.passengers.filter(p => Math.round(p.destFloor) === floor);
-    for (const p of leaving) {
-      p.exitElevator(floor);
-      this.passengers = this.passengers.filter(pp => pp !== p);
+    // Alight
+    for (let i = car.passengers.length - 1; i >= 0; i--) {
+      const p = car.passengers[i];
+      if (p.legTo === floor) {
+        car.passengers.splice(i, 1);
+        p.onAlight(floor, tower);
+      }
     }
 
-    // Pick up people waiting on this floor
-    const queue = this.waitingQueues[floor] || [];
-    while (queue.length > 0 && this.passengers.length < this.maxPassengers) {
-      const p = queue.shift();
-      if (!this.serves(p.destFloor)) { queue.unshift(p); break; }
-      p.enterElevator(this);
-      this.passengers.push(p);
-      this.addRequest(p.destFloor);
+    // Board (FIFO)
+    const q = this.waiting.get(floor);
+    if (q) {
+      while (q.length > 0 && car.passengers.length < this.def.capacity) {
+        const p = q.shift();
+        car.passengers.push(p);
+        p.onBoard(this, car, time);
+        const waited = time.totalMin - p.waitStart;
+        this.avgWait = lerp(this.avgWait, waited, 0.12);
+      }
+      if (q.length === 0) this.waiting.delete(floor);
     }
   }
 
-  // Pixel Y of the car's top edge, relative to building top
-  carPixelY() {
-    return floorTopY(this.carFloor);
+  // Drop everyone when the shaft is demolished
+  evacuate(tower) {
+    for (const car of this.cars) {
+      for (const p of car.passengers) p.despawnNow();
+      car.passengers.length = 0;
+    }
+    for (const q of this.waiting.values()) {
+      for (const p of q) p.giveUp(tower, true);
+    }
+    this.waiting.clear();
   }
-}
 
-// Convert floor number → pixel Y from building top
-function floorTopY(floor) {
-  if (floor >= 1) {
-    return (C.ABOVE - floor) * C.FLOOR_H;
-  } else {
-    // underground: -1 = B1, -2 = B2, -3 = B3
-    return (C.ABOVE + Math.abs(floor) - 1) * C.FLOOR_H;
+  serialize() {
+    return { t: this.type, c: this.col, b: this.bottom, p: this.top };
+  }
+
+  static deserialize(d) {
+    return new ElevatorShaft(d.t, d.c, d.b, d.p);
   }
 }
