@@ -79,9 +79,11 @@ class Renderer {
 
   resize() {
     const wrap = this.canvas.parentElement;
-    const dpr = window.devicePixelRatio || 1;
+    // Cap DPR at 2 — full 3× retina costs far more than it shows on a phone
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.W = wrap.clientWidth;
     this.H = wrap.clientHeight;
+    this.isSmall = this.W < 760;
     this.canvas.width = this.W * dpr;
     this.canvas.height = this.H * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -943,7 +945,7 @@ class Renderer {
     const wantRain = season === 'Autumn' && (time.day % 2 === 0);
     if (!wantSnow && !wantRain) { this.precip.length = 0; return; }
 
-    const target = wantSnow ? 130 : 170;
+    const target = (wantSnow ? 130 : 170) * (this.isSmall ? 0.5 : 1);
     while (this.precip.length < target) {
       this.precip.push({
         x: Math.random() * this.W, y: Math.random() * this.H,

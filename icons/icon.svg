@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2c55"/>
+      <stop offset="0.6" stop-color="#3a2c5e"/>
+      <stop offset="1" stop-color="#b65a64"/>
+    </linearGradient>
+    <linearGradient id="tower" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#23304e"/>
+      <stop offset="1" stop-color="#101a2e"/>
+    </linearGradient>
+    <pattern id="win" width="26" height="34" patternUnits="userSpaceOnUse">
+      <rect x="5" y="7" width="12" height="16" rx="2" fill="#ffd98a" opacity="0.85"/>
+    </pattern>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  <circle cx="376" cy="350" r="46" fill="#ffeebb" opacity="0.9"/>
+  <g>
+    <rect x="96" y="288" width="84" height="184" fill="url(#tower)"/>
+    <rect x="96" y="288" width="84" height="184" fill="url(#win)" opacity="0.7"/>
+    <rect x="332" y="252" width="90" height="220" fill="url(#tower)"/>
+    <rect x="332" y="252" width="90" height="220" fill="url(#win)" opacity="0.7"/>
+    <rect x="196" y="118" width="120" height="354" fill="url(#tower)"/>
+    <rect x="196" y="118" width="120" height="354" fill="url(#win)"/>
+    <rect x="249" y="74" width="14" height="44" fill="#101a2e"/>
+    <circle cx="256" cy="68" r="10" fill="#ff5a5a"/>
+  </g>
+  <rect x="64" y="468" width="384" height="14" rx="7" fill="#0c1322"/>
+</svg>

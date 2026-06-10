@@ -84,6 +84,14 @@ class Game {
     } else {
       this.ui.toast('Welcome back — your tower missed you!', 'success');
     }
+
+    // One-time hint for iOS Safari: installing makes it fullscreen
+    const isiOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    if (isiOS && !navigator.standalone && !localStorage.getItem('skyrise.a2hs')) {
+      localStorage.setItem('skyrise.a2hs', '1');
+      setTimeout(() => this.ui.toast(
+        '📲 Tip: tap Share → "Add to Home Screen" to play fullscreen', 'info', 9000), 4000);
+    }
   }
 
   // ── Main loop ─────────────────────────────────────────────

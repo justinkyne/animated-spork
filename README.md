@@ -11,6 +11,15 @@ python3 -m http.server 8000
 # → http://localhost:8000
 ```
 
+## On iPhone / Android 📱
+
+SKYRISE is a full PWA with native touch controls — drag to pan, pinch to
+zoom, tap to build, slide-in drawers for the build menu (🏗️) and goals (⭐).
+Serve it over HTTPS (GitHub Pages works great), open it in Safari, then
+**Share → Add to Home Screen**: it installs with its own icon, runs
+fullscreen without browser chrome, and works offline via a service worker.
+For an App Store build later, the same code drops into a Capacitor wrapper.
+
 ## The Loop
 
 1. **Build** offices, condos, shops and hotels — each strip of floorspace is

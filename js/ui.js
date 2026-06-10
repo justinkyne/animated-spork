@@ -29,10 +29,50 @@ class UI {
     this._lastStatsRefresh = 0;
     this._goalsDirty = true;
 
+    this.isTouch = window.matchMedia('(pointer: coarse)').matches;
+
     this._buildSidebar();
     this._wireTabs();
     this._wireSpeedButtons();
     this._wireSystemButtons();
+    this._wireDrawers();
+  }
+
+  // ── Mobile drawers ────────────────────────────────────────
+  _wireDrawers() {
+    const sidebar = document.getElementById('sidebar');
+    const panel = document.getElementById('rightpanel');
+    document.getElementById('mob-build').addEventListener('click', () => {
+      sfx.click();
+      panel.classList.remove('open');
+      sidebar.classList.toggle('open');
+      this._syncFabs();
+    });
+    document.getElementById('mob-panel').addEventListener('click', () => {
+      sfx.click();
+      sidebar.classList.remove('open');
+      panel.classList.toggle('open');
+      this._syncFabs();
+    });
+  }
+
+  _syncFabs() {
+    const sbOpen = document.getElementById('sidebar').classList.contains('open');
+    const rpOpen = document.getElementById('rightpanel').classList.contains('open');
+    document.getElementById('mob-build').textContent = sbOpen ? '✕' : '🏗️';
+    document.getElementById('mob-panel').textContent = rpOpen ? '✕' : '⭐';
+  }
+
+  closeDrawers() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('rightpanel').classList.remove('open');
+    this._syncFabs();
+  }
+
+  // Route short feedback to where the player can see it
+  note(msg, type = 'warn') {
+    if (this.isTouch) this.toast(msg, type, 2600);
+    else this.setStatus(msg);
   }
 
   // ── Sidebar build buttons ─────────────────────────────────
@@ -82,8 +122,15 @@ class UI {
             return;
           }
           sfx.click();
-          this.game.input.setTool(
-            this.game.input.activeTool === it.tool ? null : it.tool);
+          const selecting = this.game.input.activeTool !== it.tool;
+          this.game.input.setTool(selecting ? it.tool : null);
+          // On phones, close the drawer so the player can place immediately
+          if (selecting && this.isTouch) {
+            this.closeDrawers();
+            const def = it.def;
+            if (def) this.toast(`${def.icon} ${def.name} — tap the tower to build`, 'info', 2200);
+            else if (it.tool.startsWith('ELEV')) this.toast('🛗 Drag up/down on the tower to place', 'info', 2600);
+          }
         });
         this.el.tools.appendChild(btn);
         this.toolButtons.set(it.tool, { btn, unlock: it.unlock, def: it.def });
@@ -400,10 +447,16 @@ class UI {
   }
 
   showHelp() {
-    this.showModal(`
-      <h1>SKYRISE</h1>
-      <p>Build a skyscraper city-in-the-sky. Keep tenants happy, elevators
-      fast, and your stars climbing.</p>
+    const controls = this.isTouch ? `
+      <div class="help-grid">
+        <b>Drag</b><span>Pan the camera (with no tool selected)</span>
+        <b>Pinch</b><span>Zoom in and out</span>
+        <b>Tap</b><span>Build with selected tool / inspect</span>
+        <b>Drag up/down</b><span>Set elevator range (elevator tool)</span>
+        <b>Drag sideways</b><span>Paint multiple rooms in a row</span>
+        <b>🏗️ button</b><span>Open the build menu</span>
+        <b>⭐ button</b><span>Goals, info &amp; stats</span>
+      </div>` : `
       <div class="help-grid">
         <b>Left drag</b><span>Pan the camera (with no tool selected)</span>
         <b>Mouse wheel</b><span>Zoom</span>
@@ -413,7 +466,12 @@ class UI {
         <b>Right click / Esc</b><span>Cancel tool</span>
         <b>Space</b><span>Pause</span>
         <b>1–5 keys</b><span>Game speed</span>
-      </div>
+      </div>`;
+    this.showModal(`
+      <h1>SKYRISE</h1>
+      <p>Build a skyscraper city-in-the-sky. Keep tenants happy, elevators
+      fast, and your stars climbing.</p>
+      ${controls}
       <p>Tips: rent is collected every 4th day. Offices need elevators before
       anyone moves in. Hotels need Housekeeping. Express elevators only stop
       at Sky Lobbies — that's how you go tall.</p>
