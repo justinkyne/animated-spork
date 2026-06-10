@@ -129,14 +129,15 @@ class UI {
   _buildSidebar() {
     const groups = new Map(C.CATEGORIES.map(c => [c, []]));
 
+    const cc = base => this.game.cost(base);   // city-priced construction
     groups.get('TRANSPORT').push(
-      { tool: 'ELEV_STANDARD', icon: '🛗', name: 'Elevator', costStr: `${fmt$(C.ELEVATORS.STANDARD.base)}+`, unlock: 1, desc: C.ELEVATORS.STANDARD.desc },
-      { tool: 'ELEV_EXPRESS', icon: '🚀', name: 'Express', costStr: `${fmt$(C.ELEVATORS.EXPRESS.base)}+`, unlock: 3, desc: C.ELEVATORS.EXPRESS.desc },
+      { tool: 'ELEV_STANDARD', icon: '🛗', name: 'Elevator', costStr: `${fmt$(cc(C.ELEVATORS.STANDARD.base))}+`, unlock: 1, desc: C.ELEVATORS.STANDARD.desc },
+      { tool: 'ELEV_EXPRESS', icon: '🚀', name: 'Express', costStr: `${fmt$(cc(C.ELEVATORS.EXPRESS.base))}+`, unlock: 3, desc: C.ELEVATORS.EXPRESS.desc },
     );
     for (const [key, def] of Object.entries(C.ROOMS)) {
       groups.get(def.cat).push({
         tool: key, icon: def.icon, name: def.name,
-        costStr: fmt$(def.cost), unlock: def.unlock, desc: def.desc, def,
+        costStr: fmt$(cc(def.cost)), unlock: def.unlock, desc: def.desc, def,
       });
     }
     groups.get('TOOLS').push(
@@ -193,7 +194,7 @@ class UI {
     const money = this.game.economy.money;
     for (const [tool, { btn, unlock, def }] of this.toolButtons) {
       btn.classList.toggle('locked', stars < unlock);
-      if (def) btn.classList.toggle('cant-afford', money < def.cost);
+      if (def) btn.classList.toggle('cant-afford', money < this.game.cost(def.cost));
       btn.classList.toggle('active', this.game.input.activeTool === tool);
     }
   }
@@ -231,18 +232,7 @@ class UI {
       if (SaveSystem.save(this.game)) this.toast('Game saved.', 'success');
     });
     document.getElementById('btn-new').addEventListener('click', () => {
-      this.showModal(`
-        <h1>Start over?</h1>
-        <p>This wipes your current tower and starts a brand new game.</p>
-        <button class="modal-btn" id="m-confirm">New Game</button>
-        <button class="modal-btn ghost" id="m-cancel">Cancel</button>
-      `);
-      document.getElementById('m-confirm').addEventListener('click', () => {
-        SaveSystem.clear();
-        sessionStorage.setItem('skyrise.fresh', '1');
-        location.reload();
-      });
-      document.getElementById('m-cancel').addEventListener('click', () => this.hideModal());
+      this.showCitySelect();
     });
   }
 
@@ -270,7 +260,7 @@ class UI {
     }
 
     this.el.clock.textContent = g.time.clockStr;
-    this.el.date.textContent = g.time.dateStr;
+    this.el.date.textContent = `${g.city.emoji} ${g.city.name} · ${g.time.dateStr}`;
 
     document.querySelectorAll('.spd-btn').forEach(b =>
       b.classList.toggle('active', parseInt(b.dataset.speed, 10) === g.time.speedIdx));
@@ -483,20 +473,101 @@ class UI {
     if (hasSave) {
       const cont = document.createElement('button');
       cont.className = 'splash-btn';
-      cont.textContent = '▶  Continue Tower';
+      cont.textContent = `▶  Continue in ${this.game.city.name}`;
       cont.addEventListener('click', () => dismiss(false));
       const fresh = document.createElement('button');
       fresh.className = 'splash-btn ghost';
-      fresh.textContent = 'New Tower';
+      fresh.textContent = '🌎 Choose City';
       fresh.addEventListener('click', () => dismiss(true));
       btns.append(cont, fresh);
     } else {
       const start = document.createElement('button');
       start.className = 'splash-btn';
-      start.textContent = '▶  Build Your Tower';
-      start.addEventListener('click', () => dismiss(false));
+      start.textContent = '▶  Start Your Climb';
+      start.addEventListener('click', () => dismiss(true));
       btns.append(start);
     }
+  }
+
+  // ── City select (campaign levels + free play) ─────────────
+  showCitySelect(fromSplash = false) {
+    const cityCard = (c, locked, done, current) => {
+      const status = done ? '<span class="cs-done">✓ COMPLETE</span>'
+        : locked ? `<span class="cs-lock">🔒 ${Campaign.unlockHint(c)}</span>`
+        : current ? '<span class="cs-current">▶ CURRENT TOWER</span>' : '';
+      const win = c.win
+        ? `<div class="cs-goal">Goal: ${'★'.repeat(c.win.stars)} · ${c.win.pop.toLocaleString()} pop${c.win.crown ? ' · 👑 Crown' : ''}</div>`
+        : '<div class="cs-goal">Sandbox — no goal, just build</div>';
+      return `<button class="city-card ${locked ? 'locked' : ''}" data-city="${c.id}" ${locked ? 'disabled' : ''}>
+        <span class="cs-emoji">${c.emoji}</span>
+        <span class="cs-body">
+          <span class="cs-name">${c.name} <em>${c.region}</em> ${status}</span>
+          <span class="cs-pop">Pop. ${c.population.toLocaleString()} · Costs ×${c.costMult} · Rents ×${c.rentMult}</span>
+          <span class="cs-tag">${c.tagline}</span>
+          ${win}
+        </span>
+      </button>`;
+    };
+
+    const cur = this.game.city.id;
+    let html = '<h1>Choose Your City</h1>';
+    html += '<p>Climb the campaign to unlock the skyline finale — or free-build anywhere.</p>';
+    html += '<div class="city-list">';
+    html += '<div class="goal-section">THE CLIMB</div>';
+    for (const c of campaignCities()) {
+      html += cityCard(c, !Campaign.isUnlocked(c), Campaign.isCompleted(c.id), c.id === cur);
+    }
+    html += '<div class="goal-section">THE FINALE — PICK YOUR SKYLINE</div>';
+    for (const c of finaleCities()) {
+      html += cityCard(c, !Campaign.isUnlocked(c), Campaign.isCompleted(c.id), c.id === cur);
+    }
+    html += '<div class="goal-section">FREE PLAY</div>';
+    for (const c of freePlayCities()) {
+      html += cityCard(c, false, false, c.id === cur);
+    }
+    html += '</div>';
+    html += `<button class="modal-btn ghost" id="cs-close">${fromSplash ? 'Back' : 'Cancel'}</button>`;
+
+    this.showModal(html);
+
+    document.getElementById('cs-close').addEventListener('click', () => {
+      this.hideModal();
+      if (fromSplash && !this.game.started) this.game._begin(!SaveSystem.load());
+    });
+    document.querySelectorAll('.city-card:not(.locked)').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.city;
+        if (id === cur && this.game.started) { this.hideModal(); return; }
+        sfx.click();
+        if (id === cur && !this.game.started) {
+          this.hideModal();
+          this.game._begin(!SaveSystem.load());
+          return;
+        }
+        // Starting a different city replaces the active tower
+        sessionStorage.setItem('skyrise.newcity', id);
+        location.reload();
+      });
+    });
+  }
+
+  showLevelComplete(city) {
+    const next = campaignCities().find(c => !Campaign.isCompleted(c.id)) ||
+                 (Campaign.isUnlocked(finaleCities()[0]) && !city.finale ? null : null);
+    const finaleReady = campaignCities().every(c => Campaign.isCompleted(c.id));
+    this.showModal(`
+      <h1 class="gold">${city.emoji} ${city.name.toUpperCase()} CONQUERED!</h1>
+      <div class="star-burst"><div class="big-stars">${'★'.repeat(city.win.stars)}</div></div>
+      <p>${city.win.pop.toLocaleString()} people now live and work in your ${city.name} tower.
+      ${city.finale ? 'You beat the final skyline. You are a true tower legend.'
+        : finaleReady ? 'The finale cities are unlocked — pick your skyline!'
+        : next ? `Next stop: <b>${next.name}</b> — bigger city, bigger stakes.` : ''}</p>
+      ${city.finale ? '' : '<button class="modal-btn" id="lc-next">🌆 Next City</button>'}
+      <button class="modal-btn ghost" id="lc-stay">Keep Building Here</button>
+    `);
+    const nextBtn = document.getElementById('lc-next');
+    if (nextBtn) nextBtn.addEventListener('click', () => this.showCitySelect());
+    document.getElementById('lc-stay').addEventListener('click', () => this.hideModal());
   }
 
   showHelp() {

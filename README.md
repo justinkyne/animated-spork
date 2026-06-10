@@ -20,6 +20,24 @@ Serve it over HTTPS (GitHub Pages works great), open it in Safari, then
 fullscreen without browser chrome, and works offline via a service worker.
 For an App Store build later, the same code drops into a Capacitor wrapper.
 
+## City Mode 🌎
+
+Your tower rises in a real city, and the city shapes the game. Each profile
+is tuned from real-world population and density: land and construction
+costs, market rents, how fast tenants arrive, hotel and tourism demand, the
+foot traffic that shops need — even the skyline silhouette behind your
+tower matches the city's character.
+
+**The Climb (campaign):** Burlington, VT → Portland, OR → Chicago → then
+pick your finale skyline: **Manhattan, Tokyo, London, Hong Kong, or
+Dubai** — brutal costs, sky-high rents, and a Crown to place at the top.
+Campaign medals persist across towers. **Free Play** offers more world
+cities with no win condition.
+
+The `CityProfile` shape in `js/city.js` is the contract for live map data
+later: a fetched OpenStreetMap/Census profile (real lot, real neighbors,
+real density) plugs into the same fields.
+
 ## The Loop
 
 1. **Build** offices, condos, shops and hotels — each strip of floorspace is

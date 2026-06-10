@@ -36,20 +36,10 @@ class Renderer {
         puff: 0.8 + Math.random() * 0.5,
       });
     }
+    this.city = null;
     this._skyline = [];
-    let sx = -2400;
-    while (sx < 4800) {
-      const w = 60 + Math.random() * 150;
-      this._skyline.push({ x: sx, w, h: 120 + Math.random() * 500 });
-      sx += w + 8 + Math.random() * 70;
-    }
     this._skyline2 = [];
-    sx = -2400;
-    while (sx < 4800) {
-      const w = 90 + Math.random() * 190;
-      this._skyline2.push({ x: sx, w, h: 80 + Math.random() * 260 });
-      sx += w + 20 + Math.random() * 120;
-    }
+    this._buildSkyline({ tall: 0.15, maxH: 300, gap: 1.0 });
 
     // Street life
     const carColors = ['#d8dde6', '#5a6e8a', '#b04848', '#caa84c', '#4c7eb0', '#3c3f4a'];
@@ -75,6 +65,35 @@ class Renderer {
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
+  }
+
+  // Shape the backdrop to the chosen city's real silhouette character:
+  // how dense the blocks are, how high they run, and how often a true
+  // high-rise punctures the skyline.
+  setCity(city) {
+    this.city = city;
+    this._buildSkyline(city.skyline || { tall: 0.15, maxH: 300, gap: 1.0 });
+  }
+
+  _buildSkyline(s) {
+    this._skyline.length = 0;
+    this._skyline2.length = 0;
+    let sx = -2400;
+    while (sx < 4800) {
+      const isTall = Math.random() < s.tall;
+      const w = (isTall ? 50 : 70) + Math.random() * 130;
+      const h = isTall
+        ? s.maxH * (0.7 + Math.random() * 0.5)
+        : 60 + Math.random() * s.maxH * 0.45;
+      this._skyline.push({ x: sx, w, h });
+      sx += w + (8 + Math.random() * 70) * s.gap;
+    }
+    sx = -2400;
+    while (sx < 4800) {
+      const w = 90 + Math.random() * 190;
+      this._skyline2.push({ x: sx, w, h: 50 + Math.random() * s.maxH * 0.55 });
+      sx += w + (20 + Math.random() * 120) * s.gap;
+    }
   }
 
   resize() {
@@ -401,6 +420,17 @@ class Renderer {
       : season === 'Summer' ? '#4e8a44' : '#5a9a50';
     ctx.fillStyle = this._lerpHex(grass, '#0e141c', night * 0.55);
     ctx.fillRect(0, gy, this.W, Math.max(2, 5 * this.cam.zoom));
+
+    // City nameplate carved into the ground beside the tower
+    if (this.city && this.cam.zoom > 0.5) {
+      const z = this.cam.zoom;
+      ctx.font = `800 ${Math.max(9, 11 * z)}px 'Outfit', sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(220,230,245,0.4)';
+      ctx.fillText(
+        `${this.city.name.toUpperCase()} · ${this.city.region.toUpperCase()}`,
+        this.sx(C.COLS * C.CELL_W / 2) + 130 * z, gy + 16 * z);
+    }
   }
 
   // Sidewalk, lamps, trees & cars outside the tower footprint
@@ -1429,7 +1459,7 @@ class Renderer {
       const def = C.ELEVATORS[type];
       const span = hi - lo;
       ctx.fillText(
-        `${span} floors · ${fmt$(def.base + def.perFloor * span)}`,
+        `${span} floors · ${fmt$(game.cost(def.base + def.perFloor * span))}`,
         x + C.ELEV_W * C.CELL_W * z / 2, yTop - 8,
       );
       return;
@@ -1472,7 +1502,7 @@ class Renderer {
     ctx.fillStyle = '#fff';
     ctx.font = `700 ${Math.max(10, 11 * z)}px 'Space Grotesk', sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(fmt$(def.cost), x + w / 2, y - 8);
+    ctx.fillText(fmt$(game.cost(def.cost)), x + w / 2, y - 8);
   }
 
   // Touch flow: a movable, pulsing ghost awaiting ✓/✕

@@ -7,6 +7,8 @@ const SaveSystem = {
     try {
       const data = {
         v: 1,
+        city: game.city ? game.city.id : 'burlington',
+        lvl: game._levelDone ? 1 : 0,
         totalMin: game.time.totalMin,
         tower: game.tower.serialize(),
         economy: game.economy.serialize(),

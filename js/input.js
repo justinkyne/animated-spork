@@ -86,15 +86,16 @@ class Input {
     const g = this.game;
     if (p.kind === 'room') {
       const def = C.ROOMS[p.type];
+      const cost = g.cost(def.cost);
       const check = g.tower.canPlace(p.type, p.floor, p.col);
-      const afford = g.economy.canAfford(def.cost);
+      const afford = g.economy.canAfford(cost);
       p.valid = check.ok && afford;
       p.reason = !check.ok ? check.reason : (!afford ? 'Not enough funds.' : null);
-      p.cost = def.cost;
-      p.label = `${def.icon} ${def.name} · ${fmt$(def.cost)}`;
+      p.cost = cost;
+      p.label = `${def.icon} ${def.name} · ${fmt$(cost)}`;
     } else if (p.kind === 'elev') {
       const def = C.ELEVATORS[p.type];
-      const cost = def.base + def.perFloor * (p.f1 - p.f0);
+      const cost = g.cost(def.base + def.perFloor * (p.f1 - p.f0));
       const check = g.tower.canPlaceShaft(p.type, p.col, p.f0, p.f1);
       const afford = g.economy.canAfford(cost);
       p.valid = check.ok && afford;
@@ -104,9 +105,8 @@ class Input {
     } else if (p.kind === 'demolish') {
       p.valid = true;
       const t = p.target;
-      const refund = t.kind === 'room'
-        ? Math.round(t.obj.def.cost * C.DEMOLISH_REFUND)
-        : Math.round(t.obj.cost() * C.DEMOLISH_REFUND);
+      const refund = Math.round(g.cost(
+        t.kind === 'room' ? t.obj.def.cost : t.obj.cost()) * C.DEMOLISH_REFUND);
       p.label = `🔨 Demolish ${t.kind === 'room' ? t.obj.name : t.obj.def.name} · +${fmt$(refund)}`;
     }
     this.game.ui.syncPending(p);
@@ -550,7 +550,8 @@ class Input {
       if (hi === 0) hi = 1;
       const type = this.activeTool === 'ELEV_EXPRESS' ? 'EXPRESS' : 'STANDARD';
       const check = this.game.tower.canPlaceShaft(type, this._elevDrag.col, lo, hi);
-      const cost = C.ELEVATORS[type].base + C.ELEVATORS[type].perFloor * (hi - lo);
+      const cost = this.game.cost(
+        C.ELEVATORS[type].base + C.ELEVATORS[type].perFloor * (hi - lo));
       hover.elevDrag = {
         col: this._elevDrag.col, f0: lo, f1: hi, type,
         valid: check.ok && this.game.economy.canAfford(cost),
@@ -580,7 +581,7 @@ class Input {
       const placeCol = clamp(col - Math.floor(def.w / 2), 0, C.COLS - def.w);
       hover.col = placeCol;
       hover.valid = this.game.tower.canPlace(this.activeTool, floor, placeCol).ok &&
-                    this.game.economy.canAfford(def.cost);
+                    this.game.economy.canAfford(this.game.cost(def.cost));
     }
     r.hover = hover;
   }
