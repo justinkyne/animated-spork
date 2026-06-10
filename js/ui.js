@@ -36,6 +36,7 @@ class UI {
     this._wireSpeedButtons();
     this._wireSystemButtons();
     this._wireDrawers();
+    this._wireBuildControls();
   }
 
   // ── Mobile drawers ────────────────────────────────────────
@@ -67,6 +68,55 @@ class UI {
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('rightpanel').classList.remove('open');
     this._syncFabs();
+  }
+
+  // ── Build-mode pill, confirm bar, undo chip ───────────────
+  _wireBuildControls() {
+    document.getElementById('bp-exit').addEventListener('click', () => {
+      sfx.click();
+      this.game.input.setTool(null);
+    });
+    document.getElementById('cb-ok').addEventListener('click', () => {
+      this.game.input.confirmPending();
+    });
+    document.getElementById('cb-cancel').addEventListener('click', () => {
+      sfx.click();
+      this.game.input.clearPending();
+    });
+    document.getElementById('undo-chip').addEventListener('click', () => {
+      this.game.undoLastBuild();
+    });
+  }
+
+  syncBuildPill(tool) {
+    const pill = document.getElementById('build-pill');
+    if (!tool) { pill.classList.add('hidden'); return; }
+    let label;
+    if (tool === 'DEMOLISH') label = '🔨 Demolish mode';
+    else if (tool === 'ELEV_STANDARD') label = '🛗 Building: Elevator';
+    else if (tool === 'ELEV_EXPRESS') label = '🚀 Building: Express';
+    else label = `${C.ROOMS[tool].icon} Building: ${C.ROOMS[tool].name}`;
+    document.getElementById('bp-label').textContent = label;
+    pill.classList.remove('hidden');
+  }
+
+  syncPending(pending) {
+    const bar = document.getElementById('confirm-bar');
+    if (!pending) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+    const label = document.getElementById('cb-label');
+    const ok = document.getElementById('cb-ok');
+    if (pending.kind === 'demolish') {
+      label.textContent = pending.label;
+      ok.textContent = '✓ Demolish';
+      ok.disabled = false;
+      bar.classList.remove('invalid');
+    } else {
+      label.textContent = pending.valid ? pending.label : (pending.reason || 'Can\'t build here');
+      ok.textContent = '✓ Build';
+      ok.disabled = !pending.valid;
+      bar.classList.toggle('invalid', !pending.valid);
+    }
   }
 
   // Route short feedback to where the player can see it
@@ -247,6 +297,9 @@ class UI {
     }
 
     this.refreshToolLocks();
+
+    // Undo chip lives while the full-refund window is open
+    document.getElementById('undo-chip').classList.toggle('hidden', !g.canUndo);
 
     if (this._goalsDirty) { this._renderGoals(); this._goalsDirty = false; }
 

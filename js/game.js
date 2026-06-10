@@ -126,6 +126,7 @@ class Game {
 
     this.economy.spend(def.cost);
     sfx.build();
+    this._lastBuild = { kind: 'room', obj: result.room, cost: def.cost, at: performance.now() };
 
     if (type === 'CROWN' && !this.won) {
       this.won = true;
@@ -151,6 +152,7 @@ class Game {
 
     this.economy.spend(cost);
     sfx.build();
+    this._lastBuild = { kind: 'shaft', obj: result.shaft, cost, at: performance.now() };
     this.ui.setStatus(`${def.name} built — floors ${bottom} to ${top}.`);
     this._checkGoals();
     return result;
@@ -176,6 +178,32 @@ class Game {
 
   demolishSelected() {
     this.demolish(this.renderer.selected);
+  }
+
+  // Full-refund undo of the most recent build, within a short window
+  get canUndo() {
+    return this._lastBuild &&
+      performance.now() - this._lastBuild.at < C.UNDO_WINDOW_MS;
+  }
+
+  undoLastBuild() {
+    const lb = this._lastBuild;
+    if (!lb || !this.canUndo) return;
+    this._lastBuild = null;
+    let removed = false;
+    if (lb.kind === 'room' && this.tower.rooms.has(lb.obj.id)) {
+      removed = this.tower.demolishRoom(lb.obj);
+    } else if (lb.kind === 'shaft' && this.tower.shafts.has(lb.obj.id)) {
+      removed = this.tower.demolishShaft(lb.obj);
+    }
+    if (!removed) return;
+    this.economy.earn(lb.cost, 'undo');
+    sfx.demolish();
+    if (this.renderer.selected && this.renderer.selected.obj === lb.obj) {
+      this.renderer.selected = null;
+      this.ui.showInfo(null);
+    }
+    this.ui.toast('Removed — full refund.', 'success', 2200);
   }
 
   inspectAt(floor, col) {

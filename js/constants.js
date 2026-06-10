@@ -24,6 +24,8 @@ const C = {
 
   MAX_AGENTS: 320,          // visible simulated people cap
   DEMOLISH_REFUND: 0.4,
+  SUPPORT_RATIO: 0.6,       // fraction of a room that must rest on structure
+  UNDO_WINDOW_MS: 8_000,    // full-refund undo window after building
 
   ELEV_W: 3,                // shaft width in cells
 
