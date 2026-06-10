@@ -44,18 +44,46 @@ class Game {
     this.renderer.centerOnLobby();
     this._lastTs = null;
     this._autosaveTimer = 0;
+    this.started = false;
 
-    if (!saved) {
-      this.ui.showHelp();
-      this.ui.setStatus('Start with a few Offices on floor 2, then connect an Elevator to the lobby.');
-    } else {
-      this.ui.toast('Game loaded — welcome back!', 'success');
-    }
     this.ui.markGoalsDirty();
     this.tower.evalPass();
 
-    window.addEventListener('beforeunload', () => SaveSystem.save(this));
+    // Title screen first; the world idles behind it until the player starts
+    this.time.setSpeed(0);
+    const skipSplash = sessionStorage.getItem('skyrise.fresh');
+    if (skipSplash) {
+      sessionStorage.removeItem('skyrise.fresh');
+      document.getElementById('splash').classList.add('gone');
+      this._begin(true);
+    } else {
+      this.ui.showSplash(!!saved, isNew => {
+        if (isNew && saved) {
+          // wipe and reboot straight into a fresh tower
+          SaveSystem.clear();
+          sessionStorage.setItem('skyrise.fresh', '1');
+          location.reload();
+          return;
+        }
+        this._begin(!saved);
+      });
+    }
+
+    window.addEventListener('beforeunload', () => {
+      if (this.started) SaveSystem.save(this);
+    });
     requestAnimationFrame(ts => this._loop(ts));
+  }
+
+  _begin(isNew) {
+    this.started = true;
+    this.time.setSpeed(1);
+    if (isNew) {
+      this.ui.showHelp();
+      this.ui.setStatus('Start with a few Offices on floor 2, then connect an Elevator to the lobby.');
+    } else {
+      this.ui.toast('Welcome back — your tower missed you!', 'success');
+    }
   }
 
   // ── Main loop ─────────────────────────────────────────────
@@ -71,7 +99,7 @@ class Game {
     this._autosaveTimer += dtReal;
     if (this._autosaveTimer > 25_000) {
       this._autosaveTimer = 0;
-      SaveSystem.save(this);
+      if (this.started) SaveSystem.save(this);
     }
 
     requestAnimationFrame(ts2 => this._loop(ts2));

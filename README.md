@@ -40,12 +40,14 @@ python3 -m http.server 8000
   (foot traffic) or they go out of business.
 - **Goals & achievements** — a 15-step goal chain with cash rewards paces the
   whole game; side achievements reward exploration.
-- **Living world** — day/night cycle, seasons with snow and rain, commuter
-  rushes, lit windows at night, a parallax city skyline.
-- **Quality of life** — autosave to localStorage, drag-to-paint rooms,
-  drag-to-size elevators, zoom/pan camera, speed controls (pause→8×),
-  synthesized sound effects (mutable), full keyboard shortcuts (`?` button
-  in-game).
+- **Living world** — day/night cycle with window bloom and a sweeping sun
+  reflection on the glass, seasons with snow and rain, commuter rushes,
+  street life (cars, lamps, trees, birds), shooting stars, a parallax
+  two-layer city skyline, and a cinematic vignette.
+- **Quality of life** — title screen, autosave to localStorage,
+  drag-to-paint rooms, drag-to-size elevators, eased zoom/pan camera,
+  speed controls (pause→8×), synthesized sound effects (mutable), full
+  keyboard shortcuts (`?` button in-game).
 
 ## Controls
 

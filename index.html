@@ -3,19 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SKYRISE — Tower Sim</title>
+  <title>SKYRISE — build the sky</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="app">
+    <div id="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+
     <header id="hud">
-      <div class="hud-group" id="hud-funds-box">
+      <div class="hud-pill" id="hud-funds-box">
         <div class="hud-label">FUNDS</div>
         <div id="hud-money">$750,000</div>
         <div id="hud-flow" class="hud-sub"></div>
       </div>
 
-      <div class="hud-group" id="hud-clock-box">
+      <div class="hud-pill" id="hud-clock-box">
         <div id="hud-clock">7:00 AM</div>
         <div id="hud-date" class="hud-sub">MON · Day 1 · Year 1 · Spring</div>
         <div id="hud-speed">
@@ -27,7 +34,7 @@
         </div>
       </div>
 
-      <div class="hud-group" id="hud-rating-box">
+      <div class="hud-pill" id="hud-rating-box">
         <div id="hud-stars">★<span class="dim">★★★★</span></div>
         <div id="hud-pop" class="hud-sub">Population 0</div>
         <div id="star-progress"><div id="star-progress-fill"></div></div>
@@ -35,40 +42,103 @@
       </div>
     </header>
 
-    <div id="main">
-      <nav id="sidebar">
-        <div id="tools"></div>
-        <div id="sidebar-footer">
-          <button class="sys-btn" id="btn-help" title="Help &amp; controls">?</button>
-          <button class="sys-btn" id="btn-sound" title="Toggle sound">🔊</button>
-          <button class="sys-btn" id="btn-save" title="Save game">💾</button>
-          <button class="sys-btn" id="btn-new" title="New game">🗑</button>
-        </div>
-      </nav>
-
-      <div id="canvas-wrap">
-        <canvas id="canvas"></canvas>
+    <nav id="sidebar">
+      <div id="tools"></div>
+      <div id="sidebar-footer">
+        <button class="sys-btn" id="btn-help" title="Help &amp; controls">?</button>
+        <button class="sys-btn" id="btn-sound" title="Toggle sound">🔊</button>
+        <button class="sys-btn" id="btn-save" title="Save game">💾</button>
+        <button class="sys-btn" id="btn-new" title="New game">🗑</button>
       </div>
+    </nav>
 
-      <aside id="rightpanel">
-        <div id="tabs">
-          <button class="tab-btn active" data-tab="goals">Goals</button>
-          <button class="tab-btn" data-tab="info">Info</button>
-          <button class="tab-btn" data-tab="stats">Stats</button>
-        </div>
-        <div id="tab-goals" class="tab"></div>
-        <div id="tab-info" class="tab hidden"><div class="muted">Click anything in the tower to inspect it.</div></div>
-        <div id="tab-stats" class="tab hidden"></div>
-      </aside>
-    </div>
+    <aside id="rightpanel">
+      <div id="tabs">
+        <button class="tab-btn active" data-tab="goals">Goals</button>
+        <button class="tab-btn" data-tab="info">Info</button>
+        <button class="tab-btn" data-tab="stats">Stats</button>
+      </div>
+      <div id="tab-goals" class="tab"></div>
+      <div id="tab-info" class="tab hidden"><div class="muted">Click anything in the tower to inspect it.</div></div>
+      <div id="tab-stats" class="tab hidden"></div>
+    </aside>
 
     <footer id="statusbar">
       <span id="status-text">Welcome to Skyrise! Pick a tool on the left and start building.</span>
-      <span id="cursor-pos"></span>
     </footer>
+    <div id="cursor-pos"></div>
 
     <div id="toasts"></div>
     <div id="modal" class="hidden"><div id="modal-card"></div></div>
+
+    <div id="splash">
+      <svg id="splash-sky" viewBox="0 0 1200 640" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+        <defs>
+          <linearGradient id="sp-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#131642"/>
+            <stop offset="0.45" stop-color="#43306e"/>
+            <stop offset="0.74" stop-color="#b65a64"/>
+            <stop offset="0.92" stop-color="#f2945e"/>
+            <stop offset="1" stop-color="#ffc27a"/>
+          </linearGradient>
+          <pattern id="sp-win1" width="10" height="14" patternUnits="userSpaceOnUse">
+            <rect x="2" y="3" width="4" height="6" fill="rgba(255,214,140,0.55)"/>
+          </pattern>
+          <pattern id="sp-win2" width="10" height="14" patternUnits="userSpaceOnUse">
+            <rect x="2" y="3" width="4" height="6" fill="rgba(255,200,140,0.22)"/>
+          </pattern>
+        </defs>
+        <rect width="1200" height="640" fill="url(#sp-sky)"/>
+        <circle cx="860" cy="470" r="52" fill="#ffeebb"/>
+        <circle cx="860" cy="470" r="78" fill="#ffd98a" opacity="0.25"/>
+        <g fill="#41355f">
+          <rect x="-20" y="320" width="120" height="320"/>
+          <rect x="130" y="380" width="90" height="260"/>
+          <rect x="250" y="290" width="110" height="350"/>
+          <rect x="420" y="360" width="80" height="280"/>
+          <rect x="540" y="250" width="100" height="390"/>
+          <rect x="700" y="380" width="90" height="260"/>
+          <rect x="940" y="330" width="100" height="310"/>
+          <rect x="1090" y="390" width="120" height="250"/>
+        </g>
+        <g>
+          <rect x="-20" y="320" width="120" height="320" fill="url(#sp-win2)"/>
+          <rect x="250" y="290" width="110" height="350" fill="url(#sp-win2)"/>
+          <rect x="540" y="250" width="100" height="390" fill="url(#sp-win2)"/>
+          <rect x="940" y="330" width="100" height="310" fill="url(#sp-win2)"/>
+        </g>
+        <g fill="#231a3c">
+          <rect x="40" y="450" width="130" height="190"/>
+          <rect x="200" y="480" width="100" height="160"/>
+          <rect x="330" y="420" width="90" height="220"/>
+          <rect x="470" y="470" width="120" height="170"/>
+          <rect x="610" y="400" width="80" height="240"/>
+          <rect x="760" y="460" width="140" height="180"/>
+          <rect x="980" y="440" width="90" height="200"/>
+          <rect x="1100" y="480" width="120" height="160"/>
+          <rect x="563" y="120" width="94" height="520"/>
+        </g>
+        <g>
+          <rect x="40" y="450" width="130" height="190" fill="url(#sp-win1)"/>
+          <rect x="330" y="420" width="90" height="220" fill="url(#sp-win1)"/>
+          <rect x="610" y="400" width="80" height="240" fill="url(#sp-win1)"/>
+          <rect x="760" y="460" width="140" height="180" fill="url(#sp-win1)"/>
+          <rect x="563" y="120" width="94" height="520" fill="url(#sp-win1)"/>
+        </g>
+        <rect x="596" y="84" width="4" height="40" fill="#1a1230"/>
+        <circle cx="598" cy="82" r="4" fill="#ff5a5a"/>
+      </svg>
+      <div id="splash-content">
+        <div id="splash-logo">SKYRISE</div>
+        <div id="splash-tag">Build the sky. Run the city inside it.</div>
+        <div id="splash-chips">
+          <span>🏙️ Living citizens</span><span>🌗 Day &amp; night</span>
+          <span>❄️ Four seasons</span><span>⭐ Five-star climb</span>
+        </div>
+        <div id="splash-btns"></div>
+        <div id="splash-foot">Autosaves in your browser · No download · Just build</div>
+      </div>
+    </div>
   </div>
 
   <script src="js/constants.js"></script>

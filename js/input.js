@@ -83,7 +83,7 @@ class Input {
   _startPan(pos) {
     const r = this.game.renderer;
     this._panning = true;
-    this._panStart = { ...pos, camX: r.cam.x, camY: r.cam.y, moved: true };
+    this._panStart = { ...pos, camX: r.camT.x, camY: r.camT.y, moved: true };
     this.canvas.classList.add('panning');
   }
 
@@ -99,8 +99,11 @@ class Input {
         this.canvas.classList.add('panning');
       }
       if (this._panStart.moved) {
-        r.cam.x = this._panStart.camX - dx / r.cam.zoom;
-        r.cam.y = this._panStart.camY - dy / r.cam.zoom;
+        // Direct (unsmoothed) panning so the world sticks to the cursor
+        r.camT.x = this._panStart.camX - dx / r.camT.zoom;
+        r.camT.y = this._panStart.camY - dy / r.camT.zoom;
+        r.cam.x = r.camT.x;
+        r.cam.y = r.camT.y;
         r.clampCamera();
       }
     }
@@ -167,10 +170,10 @@ class Input {
       case '1': case '2': case '3': case '4': case '5':
         g.time.setSpeed(parseInt(e.key, 10) - 1);
         break;
-      case 'ArrowLeft':  g.renderer.cam.x -= 80 / g.renderer.cam.zoom; g.renderer.clampCamera(); break;
-      case 'ArrowRight': g.renderer.cam.x += 80 / g.renderer.cam.zoom; g.renderer.clampCamera(); break;
-      case 'ArrowUp':    g.renderer.cam.y -= 80 / g.renderer.cam.zoom; g.renderer.clampCamera(); break;
-      case 'ArrowDown':  g.renderer.cam.y += 80 / g.renderer.cam.zoom; g.renderer.clampCamera(); break;
+      case 'ArrowLeft':  g.renderer.camT.x -= 110 / g.renderer.camT.zoom; g.renderer.clampCamera(); break;
+      case 'ArrowRight': g.renderer.camT.x += 110 / g.renderer.camT.zoom; g.renderer.clampCamera(); break;
+      case 'ArrowUp':    g.renderer.camT.y -= 110 / g.renderer.camT.zoom; g.renderer.clampCamera(); break;
+      case 'ArrowDown':  g.renderer.camT.y += 110 / g.renderer.camT.zoom; g.renderer.clampCamera(); break;
     }
   }
 

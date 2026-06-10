@@ -24,6 +24,7 @@ class UI {
     };
 
     this._displayMoney = game.economy.money;
+    this._lastMoney = game.economy.money;
     this._statusTimer = 0;
     this._lastStatsRefresh = 0;
     this._goalsDirty = true;
@@ -70,6 +71,10 @@ class UI {
           `<span class="t-body"><div class="t-name">${it.name}</div>` +
           `<div class="t-cost">${it.costStr}</div></span>` +
           `<span class="t-lock"></span>`;
+        if (it.def) {
+          btn.querySelector('.t-icon').style.background =
+            `linear-gradient(135deg, ${it.def.color}55, ${it.def.color}22)`;
+        }
         btn.addEventListener('click', () => {
           if (btn.classList.contains('locked')) {
             sfx.error();
@@ -137,6 +142,7 @@ class UI {
       `);
       document.getElementById('m-confirm').addEventListener('click', () => {
         SaveSystem.clear();
+        sessionStorage.setItem('skyrise.fresh', '1');
         location.reload();
       });
       document.getElementById('m-cancel').addEventListener('click', () => this.hideModal());
@@ -147,8 +153,14 @@ class UI {
   update() {
     const g = this.game;
 
-    // Animated money counter
+    // Animated money counter, with a little pulse on big gains
     const target = g.economy.money;
+    if (target - this._lastMoney > 5_000 && this.el.money.animate) {
+      this.el.money.animate(
+        [{ transform: 'scale(1.14)' }, { transform: 'scale(1)' }],
+        { duration: 320, easing: 'cubic-bezier(.22,1.4,.36,1)' });
+    }
+    this._lastMoney = target;
     const diff = target - this._displayMoney;
     this._displayMoney += Math.abs(diff) < 1 ? diff : diff * 0.18;
     this.el.money.textContent = fmt$(Math.round(this._displayMoney));
@@ -336,7 +348,7 @@ class UI {
   showStarUp(stars) {
     this.showModal(`
       <h1 class="gold">RATING UP!</h1>
-      <div class="big-stars">${'★'.repeat(stars)}<span style="color:#3a4660">${'★'.repeat(5 - stars)}</span></div>
+      <div class="star-burst"><div class="big-stars">${'★'.repeat(stars)}<span class="off">${'★'.repeat(5 - stars)}</span></div></div>
       <p>Your tower earned its ${['', 'first', 'second', 'third', 'fourth', 'fifth'][stars]} star.<br>
       New rooms are now available in the build menu!</p>
       <button class="modal-btn" id="m-ok">Keep Building</button>
@@ -347,13 +359,44 @@ class UI {
   showWin() {
     this.showModal(`
       <h1 class="gold">🏆 MEGATOWER 🏆</h1>
-      <div class="big-stars">★★★★★</div>
+      <div class="star-burst"><div class="big-stars">★★★★★</div></div>
       <p>The Crown shines from your skyline. You built the ultimate tower —
       every elevator hums, every tenant smiles.</p>
       <p>The city is yours. Keep building, or start a fresh skyline.</p>
       <button class="modal-btn" id="m-ok">Continue</button>
     `);
     document.getElementById('m-ok').addEventListener('click', () => this.hideModal());
+  }
+
+  // ── Title screen ──────────────────────────────────────────
+  showSplash(hasSave, onStart) {
+    const splash = document.getElementById('splash');
+    const btns = document.getElementById('splash-btns');
+    btns.innerHTML = '';
+
+    const dismiss = (isNew) => {
+      sfx.click();
+      splash.classList.add('gone');
+      onStart(isNew);
+    };
+
+    if (hasSave) {
+      const cont = document.createElement('button');
+      cont.className = 'splash-btn';
+      cont.textContent = '▶  Continue Tower';
+      cont.addEventListener('click', () => dismiss(false));
+      const fresh = document.createElement('button');
+      fresh.className = 'splash-btn ghost';
+      fresh.textContent = 'New Tower';
+      fresh.addEventListener('click', () => dismiss(true));
+      btns.append(cont, fresh);
+    } else {
+      const start = document.createElement('button');
+      start.className = 'splash-btn';
+      start.textContent = '▶  Build Your Tower';
+      start.addEventListener('click', () => dismiss(false));
+      btns.append(start);
+    }
   }
 
   showHelp() {
