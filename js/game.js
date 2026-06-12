@@ -148,6 +148,7 @@ class Game {
 
     this.economy.spend(cost);
     sfx.build();
+    Native.haptic('light');
     this._lastBuild = { kind: 'room', obj: result.room, cost, at: performance.now() };
 
     if (type === 'CROWN' && !this.won) {
@@ -174,6 +175,7 @@ class Game {
 
     this.economy.spend(cost);
     sfx.build();
+    Native.haptic('medium');
     this._lastBuild = { kind: 'shaft', obj: result.shaft, cost, at: performance.now() };
     this.ui.setStatus(`${def.name} built — floors ${bottom} to ${top}.`);
     this._checkGoals();
@@ -453,6 +455,7 @@ class Game {
     if (stars > this.stars) {
       this.stars = stars;
       sfx.star();
+      Native.haptic('success');
       this.renderer.burstConfetti(140);
       this.ui.showStarUp(stars);
       this.ui.markGoalsDirty();
@@ -476,6 +479,7 @@ class Game {
     Campaign.complete(this.city.id);
     SaveSystem.save(this);
     sfx.star();
+    Native.haptic('success');
     this.renderer.burstConfetti(200);
     this.ui.showLevelComplete(this.city);
   }
@@ -499,6 +503,7 @@ class Game {
 }
 
 // ── Boot ──────────────────────────────────────────────────────
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  await SaveSystem.restoreFromNative();
   window.game = new Game();
 });

@@ -168,6 +168,7 @@
   </div>
 
   <script src="js/constants.js"></script>
+  <script src="js/native.js"></script>
   <script src="js/city.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/time.js"></script>
@@ -183,7 +184,10 @@
   <script src="js/input.js"></script>
   <script src="js/game.js"></script>
   <script>
-    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    // PWA only on the open web — the Capacitor shell has no use for a SW
+    if ('serviceWorker' in navigator &&
+        (location.protocol === 'http:' || location.protocol === 'https:') &&
+        !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(() => {});
       });

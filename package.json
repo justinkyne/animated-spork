@@ -1,0 +1,23 @@
+{
+  "name": "skyrise",
+  "private": true,
+  "version": "1.0.0",
+  "description": "SKYRISE — a tower-building sim. Runs as a static web app, a PWA, and an iOS app via Capacitor.",
+  "scripts": {
+    "start": "npx http-server -p 8000 -c-1 .",
+    "www": "node scripts/make-www.mjs",
+    "ios:init": "npm run www && npx cap add ios && npx cap sync ios",
+    "ios:sync": "npm run www && npx cap sync ios",
+    "ios:open": "npm run ios:sync && npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/haptics": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/preferences": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}

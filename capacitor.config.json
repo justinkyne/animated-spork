@@ -1,0 +1,16 @@
+{
+  "appId": "com.skyrise.tower",
+  "appName": "SKYRISE",
+  "webDir": "www",
+  "backgroundColor": "#0c1322",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0c1322"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "overlaysWebView": true
+    }
+  }
+}

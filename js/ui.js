@@ -121,6 +121,7 @@ class UI {
 
   // Route short feedback to where the player can see it
   note(msg, type = 'warn') {
+    if (type === 'warn') Native.haptic('error');
     if (this.isTouch) this.toast(msg, type, 2600);
     else this.setStatus(msg);
   }
