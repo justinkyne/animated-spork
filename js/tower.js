@@ -80,6 +80,16 @@ class Tower {
       if (this.shaftAtCell(floor, c))
         return { ok: false, reason: 'An elevator shaft is in the way.' };
     }
+
+    // No floating rooms: build up (or dig down) one floor at a time
+    if (this.supportRatio(floor, col, def.w) < C.SUPPORT_RATIO) {
+      return {
+        ok: false,
+        reason: floor > 0
+          ? `Not enough support — build on floor ${floor - 1} first (or move closer to the tower).`
+          : `Not enough ground above — dig down one level at a time.`,
+      };
+    }
     return { ok: true };
   }
 
@@ -125,6 +135,24 @@ class Tower {
   }
 
   hasSkyLobby(floor) { return this._skyLobbyFloors.has(floor); }
+
+  // ── Structural support ────────────────────────────────────
+  _isStructure(floor, col) {
+    return this.grid.has(Tower.key(floor, col)) || !!this.shaftAtCell(floor, col);
+  }
+
+  // Fraction of the room's columns resting on structure one floor closer
+  // to the ground. Floor 2 (street level) and B1 (under the lobby) are
+  // always fully supported.
+  supportRatio(floor, col, w) {
+    if (floor === 2 || floor === -1) return 1;
+    const carrier = floor > 2 ? floor - 1 : floor + 1;
+    let n = 0;
+    for (let c = col; c < col + w; c++) {
+      if (this._isStructure(carrier, c)) n++;
+    }
+    return n / w;
+  }
 
   // ── Elevators ─────────────────────────────────────────────
   canPlaceShaft(type, col, bottom, top) {

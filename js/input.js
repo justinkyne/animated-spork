@@ -6,16 +6,22 @@ class Input {
     this.game = game;
     this.activeTool = null;       // room key | ELEV_STANDARD | ELEV_EXPRESS | DEMOLISH | null
 
+    // Touch "place, adjust, confirm" state:
+    //   {kind:'room', type, floor, col, valid, reason}
+    //   {kind:'elev', type, col, f0, f1, valid, reason}
+    //   {kind:'demolish', target, valid}
+    this.pending = null;
+
     this._mouse = { x: 0, y: 0, down: false, button: 0 };
-    this._panning = false;
     this._panStart = null;
-    this._elevDrag = null;        // {col, f0}
+    this._elevDrag = null;        // {col, f0} during creation drag
+    this._dragPending = null;     // {dCol, dFloor} while moving a pending ghost
+    this._tapMaybe = null;        // candidate tap (touch, tool armed)
     this._lastPaintCol = null;
     this._lastPaintFloor = null;
 
-    // Touch state
     this._touchActive = false;
-    this._pinch = null;           // {dist, mid, worldX, worldY}
+    this._pinch = null;
 
     canvas.addEventListener('mousedown', e => this._onDown(e));
     window.addEventListener('mousemove', e => this._onMove(e));
@@ -30,22 +36,135 @@ class Input {
     window.addEventListener('touchcancel', e => this._onTouchEnd(e), { passive: false });
   }
 
+  get isTouch() { return this.game.ui.isTouch; }
+
   setTool(tool) {
     this.activeTool = tool;
     this._elevDrag = null;
+    this.clearPending();
     this.canvas.classList.toggle('tool-active', !!tool);
     const ui = this.game.ui;
     if (tool === 'DEMOLISH') {
-      ui.setStatus('Demolish: tap a room or elevator shaft to remove it.');
+      ui.setStatus('Demolish: click a room or elevator shaft to remove it.');
     } else if (tool === 'ELEV_STANDARD' || tool === 'ELEV_EXPRESS') {
       ui.setStatus('Elevator: press and drag vertically to set the floor range.');
     } else if (tool) {
       const def = C.ROOMS[tool];
-      ui.setStatus(`${def.name}: tap to build (${fmt$(def.cost)}). Drag to build several.`);
+      ui.setStatus(`${def.name}: click to build (${fmt$(def.cost)}). Drag to build several.`);
     } else {
       ui.setStatus('Drag to pan, pinch or scroll to zoom, tap to inspect.');
     }
     ui.refreshToolLocks();
+    ui.syncBuildPill(tool);
+  }
+
+  // ── Pending ghost management (touch flow) ─────────────────
+  clearPending() {
+    this.pending = null;
+    this._dragPending = null;
+    this.game.ui.syncPending(null);
+  }
+
+  _setPendingRoom(type, floor, col) {
+    const def = C.ROOMS[type];
+    const placeCol = clamp(col - Math.floor(def.w / 2), 0, C.COLS - def.w);
+    this.pending = { kind: 'room', type, floor, col: placeCol };
+    this._validatePending();
+  }
+
+  _setPendingElev(type, col, f0, f1) {
+    let lo = Math.min(f0, f1), hi = Math.max(f0, f1);
+    if (lo === 0) lo = -1;
+    if (hi === 0) hi = 1;
+    this.pending = { kind: 'elev', type, col, f0: lo, f1: hi };
+    this._validatePending();
+  }
+
+  _validatePending() {
+    const p = this.pending;
+    if (!p) return;
+    const g = this.game;
+    if (p.kind === 'room') {
+      const def = C.ROOMS[p.type];
+      const cost = g.cost(def.cost);
+      const check = g.tower.canPlace(p.type, p.floor, p.col);
+      const afford = g.economy.canAfford(cost);
+      p.valid = check.ok && afford;
+      p.reason = !check.ok ? check.reason : (!afford ? 'Not enough funds.' : null);
+      p.cost = cost;
+      p.label = `${def.icon} ${def.name} · ${fmt$(cost)}`;
+    } else if (p.kind === 'elev') {
+      const def = C.ELEVATORS[p.type];
+      const cost = g.cost(def.base + def.perFloor * (p.f1 - p.f0));
+      const check = g.tower.canPlaceShaft(p.type, p.col, p.f0, p.f1);
+      const afford = g.economy.canAfford(cost);
+      p.valid = check.ok && afford;
+      p.reason = !check.ok ? check.reason : (!afford ? 'Not enough funds.' : null);
+      p.cost = cost;
+      p.label = `🛗 ${def.name} · ${p.f1 - p.f0} floors · ${fmt$(cost)}`;
+    } else if (p.kind === 'demolish') {
+      p.valid = true;
+      const t = p.target;
+      const refund = Math.round(g.cost(
+        t.kind === 'room' ? t.obj.def.cost : t.obj.cost()) * C.DEMOLISH_REFUND);
+      p.label = `🔨 Demolish ${t.kind === 'room' ? t.obj.name : t.obj.def.name} · +${fmt$(refund)}`;
+    }
+    this.game.ui.syncPending(p);
+  }
+
+  confirmPending() {
+    const p = this.pending;
+    if (!p) return;
+    if (p.kind === 'demolish') {
+      this.game.demolish(p.target);
+      this.clearPending();
+      return;
+    }
+    if (!p.valid) {
+      sfx.error();
+      if (p.reason) this.game.ui.note(`✖ ${p.reason}`);
+      return;
+    }
+    const result = p.kind === 'room'
+      ? this.game.buildRoom(p.type, p.floor, p.col)
+      : this.game.buildElevator(p.type, p.col, p.f0, p.f1);
+    if (result.ok) {
+      this.clearPending();          // tool stays armed for the next one
+    } else {
+      sfx.error();
+      this.game.ui.note(`✖ ${result.reason}`);
+      this._validatePending();
+    }
+  }
+
+  // Screen-space bounds of the pending ghost (for grab detection)
+  _pendingScreenRect() {
+    const p = this.pending, r = this.game.renderer;
+    if (!p) return null;
+    const z = r.cam.zoom;
+    if (p.kind === 'room') {
+      const def = C.ROOMS[p.type];
+      return {
+        x: r.sx(p.col * C.CELL_W), y: r.sy(floorTopY(p.floor)),
+        w: def.w * C.CELL_W * z, h: C.FLOOR_H * z,
+      };
+    }
+    if (p.kind === 'elev') {
+      const y = r.sy(floorTopY(p.f1));
+      return {
+        x: r.sx(p.col * C.CELL_W), y,
+        w: C.ELEV_W * C.CELL_W * z,
+        h: r.sy(floorTopY(p.f0)) + C.FLOOR_H * z - y,
+      };
+    }
+    return null;
+  }
+
+  _hitPending(pos, pad = 28) {
+    const rect = this._pendingScreenRect();
+    if (!rect) return false;
+    return pos.x >= rect.x - pad && pos.x <= rect.x + rect.w + pad &&
+           pos.y >= rect.y - pad && pos.y <= rect.y + rect.h + pad;
   }
 
   _canvasPos(e) {
@@ -53,45 +172,123 @@ class Input {
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }
 
-  // ── Shared pointer logic (mouse + touch) ──────────────────
-  _primaryDown(pos) {
-    this.game.ui.closeDrawers();
+  // ── Touch-first build flow ────────────────────────────────
+  _touchToolDown(pos) {
     const r = this.game.renderer;
     const floor = r.screenToFloor(pos.y);
     const col = r.screenToCol(pos.x);
 
+    // Grab the existing ghost to drag it around
+    if (this.pending && this.pending.kind !== 'demolish' && this._hitPending(pos)) {
+      const p = this.pending;
+      this._dragPending = {
+        dCol: (p.kind === 'room' ? p.col : p.col) - (col ?? 0),
+        dFloor: (p.kind === 'room' ? p.floor : p.f0) - (floor ?? 0),
+      };
+      return;
+    }
+
+    // Elevator with no ghost yet: vertical drag defines the range
+    if (!this.pending &&
+        (this.activeTool === 'ELEV_STANDARD' || this.activeTool === 'ELEV_EXPRESS')) {
+      if (floor !== null) {
+        this._elevDrag = { col: clamp(col - 1, 0, C.COLS - C.ELEV_W), f0: floor };
+      }
+      return;
+    }
+
+    // Otherwise: remember as a possible tap (move ghost there), but pan if
+    // the finger travels — so touching the screen never builds by accident.
+    this._tapMaybe = { pos, floor, col };
+    this._panStart = { ...pos, camX: r.camT.x, camY: r.camT.y, moved: false };
+  }
+
+  _touchToolTap(floor, col) {
+    if (floor === null) return;
+    if (this.activeTool === 'DEMOLISH') {
+      const room = this.game.tower.getRoomAt(floor, col);
+      const shaft = room ? null : this.game.tower.shaftAtCell(floor, col);
+      if (room || shaft) {
+        this.pending = {
+          kind: 'demolish',
+          target: room ? { kind: 'room', obj: room } : { kind: 'shaft', obj: shaft },
+        };
+        this._validatePending();
+      } else {
+        this.clearPending();
+      }
+      return;
+    }
+    if (C.ROOMS[this.activeTool]) {
+      this._setPendingRoom(this.activeTool, floor, col);
+      sfx.click();
+    }
+  }
+
+  // ── Shared pointer logic ──────────────────────────────────
+  _primaryDown(pos) {
+    this.game.ui.closeDrawers();
+    const r = this.game.renderer;
+
+    if (this.activeTool && this.isTouch) {
+      this._touchToolDown(pos);
+      return;
+    }
+
+    const floor = r.screenToFloor(pos.y);
+    const col = r.screenToCol(pos.x);
+
     if (!this.activeTool) {
-      // Inspect first; pan happens once the pointer moves
       this._panStart = { ...pos, camX: r.camT.x, camY: r.camT.y, moved: false };
       return;
     }
 
+    // Desktop: immediate build (hover ghost previews placement)
     if (this.activeTool === 'ELEV_STANDARD' || this.activeTool === 'ELEV_EXPRESS') {
       if (floor !== null) this._elevDrag = { col: clamp(col - 1, 0, C.COLS - C.ELEV_W), f0: floor };
       return;
     }
-
     if (this.activeTool === 'DEMOLISH') {
       this._demolishAt(floor, col);
       return;
     }
-
-    // Room tool
     this._tryPlaceRoom(floor, col, true);
   }
 
   _pointerMove(pos) {
     const r = this.game.renderer;
+    const floor = r.screenToFloor(pos.y);
+    const col = r.screenToCol(pos.x);
 
-    // Pan in progress (or click-drag with no tool)
+    // Dragging a pending ghost
+    if (this._dragPending && this.pending && floor !== null) {
+      const p = this.pending;
+      if (p.kind === 'room') {
+        const def = C.ROOMS[p.type];
+        p.floor = clamp(floor + this._dragPending.dFloor, -C.BELOW, C.ABOVE) || 2;
+        p.col = clamp(col + this._dragPending.dCol, 0, C.COLS - def.w);
+      } else if (p.kind === 'elev') {
+        const span = p.f1 - p.f0;
+        let f0 = clamp(floor + this._dragPending.dFloor, -C.BELOW, C.ABOVE - span);
+        if (f0 === 0) f0 = f0 + this._dragPending.dFloor >= 0 ? 1 : -1;
+        let f1 = f0 + span;
+        if (f1 === 0) { f0++; f1++; }
+        p.f0 = f0; p.f1 = f1;
+        p.col = clamp(col + this._dragPending.dCol, 0, C.COLS - C.ELEV_W);
+      }
+      this._validatePending();
+      return;
+    }
+
+    // Pan in progress (or click/tap-drag with no tool)
     if (this._panStart) {
       const dx = pos.x - this._panStart.x, dy = pos.y - this._panStart.y;
       if (!this._panStart.moved && Math.hypot(dx, dy) > 5) {
         this._panStart.moved = true;
+        this._tapMaybe = null;        // it's a pan, not a tap
         this.canvas.classList.add('panning');
       }
       if (this._panStart.moved) {
-        // Direct (unsmoothed) panning so the world sticks to the pointer
         r.camT.x = this._panStart.camX - dx / r.camT.zoom;
         r.camT.y = this._panStart.camY - dy / r.camT.zoom;
         r.cam.x = r.camT.x;
@@ -101,12 +298,10 @@ class Input {
     }
 
     this._mouse.x = pos.x; this._mouse.y = pos.y;
-    const floor = r.screenToFloor(pos.y);
-    const col = r.screenToCol(pos.x);
 
-    // Drag-paint rooms
-    if (this._mouse.down && this.activeTool && C.ROOMS[this.activeTool] &&
-        !this._panStart && floor !== null) {
+    // Desktop drag-paint (disabled on touch — pending flow handles it)
+    if (!this.isTouch && this._mouse.down && this.activeTool &&
+        C.ROOMS[this.activeTool] && !this._panStart && floor !== null) {
       this._tryPlaceRoom(floor, col, false);
     }
 
@@ -116,23 +311,37 @@ class Input {
 
   _pointerUp(pos, button) {
     this.canvas.classList.remove('panning');
+    const r = this.game.renderer;
 
-    // Finish elevator drag
+    // Finish an elevator creation drag
     if (this._elevDrag) {
-      const r = this.game.renderer;
       const f1 = r.screenToFloor(pos.y);
-      if (f1 !== null) this._placeElevator(this._elevDrag, f1);
+      if (f1 !== null) {
+        if (this.isTouch) {
+          // Becomes a pending ghost to adjust & confirm
+          this._setPendingElev(
+            this.activeTool === 'ELEV_EXPRESS' ? 'EXPRESS' : 'STANDARD',
+            this._elevDrag.col, this._elevDrag.f0, f1);
+        } else {
+          this._placeElevator(this._elevDrag, f1);
+        }
+      }
       this._elevDrag = null;
-      this.game.renderer.hover = null;
+      r.hover = null;
     }
 
-    // Plain tap (no drag) with no tool → inspect
+    // Touch tap with a tool armed → position the ghost there
+    if (this._tapMaybe && (!this._panStart || !this._panStart.moved)) {
+      this._touchToolTap(this._tapMaybe.floor, this._tapMaybe.col);
+    }
+    this._tapMaybe = null;
+
+    // Plain tap/click with no tool → inspect
     if (this._panStart && !this._panStart.moved && button === 0 && !this.activeTool) {
-      const r = this.game.renderer;
       this.game.inspectAt(r.screenToFloor(pos.y), r.screenToCol(pos.x));
     }
     this._panStart = null;
-    this._panning = false;
+    this._dragPending = null;
     this._lastPaintCol = null;
     this._lastPaintFloor = null;
   }
@@ -141,8 +350,6 @@ class Input {
   _onDown(e) {
     const pos = this._canvasPos(e);
     this._mouse = { ...pos, down: true, button: e.button };
-
-    // Middle / right always pans
     if (e.button === 1 || e.button === 2) {
       this._startPan(pos);
       return;
@@ -153,14 +360,11 @@ class Input {
 
   _startPan(pos) {
     const r = this.game.renderer;
-    this._panning = true;
     this._panStart = { ...pos, camX: r.camT.x, camY: r.camT.y, moved: true };
     this.canvas.classList.add('panning');
   }
 
-  _onMove(e) {
-    this._pointerMove(this._canvasPos(e));
-  }
+  _onMove(e) { this._pointerMove(this._canvasPos(e)); }
 
   _onUp(e) {
     this._mouse.down = false;
@@ -182,8 +386,7 @@ class Input {
   }
 
   _onTouchStart(e) {
-    e.preventDefault();   // suppress synthetic mouse events & page zoom
-
+    e.preventDefault();
     if (e.touches.length === 1) {
       const pos = this._touchPos(e.touches[0]);
       this._touchActive = true;
@@ -191,11 +394,11 @@ class Input {
       this._mouse = { ...pos, down: true, button: 0 };
       this._primaryDown(pos);
     } else if (e.touches.length >= 2) {
-      // Second finger: drop any one-finger gesture, start pinch-zoom
       this._elevDrag = null;
       this._panStart = null;
+      this._tapMaybe = null;
+      this._dragPending = null;
       this._lastPaintCol = null;
-      this._lastPaintFloor = null;
       this._mouse.down = false;
       this.game.renderer.hover = null;
       this._startPinch(e.touches);
@@ -225,7 +428,6 @@ class Input {
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       const dist = Math.max(20, Math.hypot(a.x - b.x, a.y - b.y));
       const zoom = clamp(this._pinch.zoom0 * dist / this._pinch.dist, 0.28, 2.4);
-      // Keep the world point that started under the fingers under them
       r.camT.zoom = zoom;
       r.camT.x = this._pinch.worldX - (mid.x - r.W / 2) / zoom;
       r.camT.y = this._pinch.worldY - (mid.y - r.H / 2) / zoom;
@@ -243,22 +445,20 @@ class Input {
     if (!this._touchActive) return;
     e.preventDefault();
 
-    if (e.touches.length >= 2) return;            // still pinching
+    if (e.touches.length >= 2) return;
     if (this._pinch && e.touches.length === 1) {
-      // Pinch released to one finger: end the gesture cleanly
       this._pinch = null;
       this._panStart = null;
       return;
     }
     if (e.touches.length === 1) return;
 
-    // Last finger lifted
     this._pinch = null;
     this._touchActive = false;
     this._mouse.down = false;
     const t = e.changedTouches[0];
     this._pointerUp(t ? this._touchPos(t) : { x: this._mouse.x, y: this._mouse.y }, 0);
-    this.game.renderer.hover = null;              // no hover ghost lingering on touch
+    this.game.renderer.hover = null;
   }
 
   // ── Keyboard ──────────────────────────────────────────────
@@ -268,11 +468,18 @@ class Input {
     switch (e.key) {
       case 'Escape':
         if (!g.ui.el.modal.classList.contains('hidden')) g.ui.hideModal();
+        else if (this.pending) this.clearPending();
         else { this.setTool(null); g.renderer.selected = null; g.ui.showInfo(null); }
+        break;
+      case 'Enter':
+        if (this.pending) this.confirmPending();
         break;
       case ' ':
         e.preventDefault();
         g.time.togglePause();
+        break;
+      case 'z':
+        if (g.canUndo) g.undoLastBuild();
         break;
       case '1': case '2': case '3': case '4': case '5':
         g.time.setSpeed(parseInt(e.key, 10) - 1);
@@ -284,7 +491,7 @@ class Input {
     }
   }
 
-  // ── Actions ───────────────────────────────────────────────
+  // ── Desktop immediate actions ─────────────────────────────
   _tryPlaceRoom(floor, col, firstClick) {
     if (floor === null) return;
     const def = C.ROOMS[this.activeTool];
@@ -326,10 +533,13 @@ class Input {
     if (shaft) { this.game.demolish({ kind: 'shaft', obj: shaft }); return; }
   }
 
-  // ── Hover state for ghost rendering ───────────────────────
+  // ── Hover state for ghost rendering (desktop) ─────────────
   _updateHover(floor, col) {
     const r = this.game.renderer;
-    if (!this.activeTool) { r.hover = null; return; }
+    if (!this.activeTool || (this.isTouch && !this._elevDrag)) {
+      r.hover = null;
+      return;
+    }
 
     const hover = { tool: this.activeTool, floor, col: null, valid: false };
 
@@ -340,7 +550,8 @@ class Input {
       if (hi === 0) hi = 1;
       const type = this.activeTool === 'ELEV_EXPRESS' ? 'EXPRESS' : 'STANDARD';
       const check = this.game.tower.canPlaceShaft(type, this._elevDrag.col, lo, hi);
-      const cost = C.ELEVATORS[type].base + C.ELEVATORS[type].perFloor * (hi - lo);
+      const cost = this.game.cost(
+        C.ELEVATORS[type].base + C.ELEVATORS[type].perFloor * (hi - lo));
       hover.elevDrag = {
         col: this._elevDrag.col, f0: lo, f1: hi, type,
         valid: check.ok && this.game.economy.canAfford(cost),
@@ -361,7 +572,7 @@ class Input {
     }
 
     if (this.activeTool === 'ELEV_STANDARD' || this.activeTool === 'ELEV_EXPRESS') {
-      r.hover = null;   // ghost appears once dragging starts
+      r.hover = null;
       return;
     }
 
@@ -370,7 +581,7 @@ class Input {
       const placeCol = clamp(col - Math.floor(def.w / 2), 0, C.COLS - def.w);
       hover.col = placeCol;
       hover.valid = this.game.tower.canPlace(this.activeTool, floor, placeCol).ok &&
-                    this.game.economy.canAfford(def.cost);
+                    this.game.economy.canAfford(this.game.cost(def.cost));
     }
     r.hover = hover;
   }

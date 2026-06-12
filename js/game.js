@@ -4,8 +4,16 @@ class Game {
   constructor() {
     this.canvas = document.getElementById('canvas');
 
-    const saved = SaveSystem.load();
+    // Starting a specific city (from the city-select screen)?
+    const newCityId = sessionStorage.getItem('skyrise.newcity');
+    if (newCityId) {
+      sessionStorage.removeItem('skyrise.newcity');
+      SaveSystem.clear();
+    }
+
+    const saved = newCityId ? null : SaveSystem.load();
     if (saved) {
+      this.city = cityById(saved.city);
       this.tower = Tower.deserialize(saved.tower);
       this.economy = Economy.deserialize(saved.economy);
       this.goals = Goals.deserialize(saved.goals);
@@ -13,16 +21,20 @@ class Game {
       this.time.totalMin = saved.totalMin || this.time.totalMin;
       this.stars = saved.stars || 1;
       this.won = !!saved.won;
+      this._levelDone = !!saved.lvl || Campaign.isCompleted(this.city.id);
     } else {
+      this.city = cityById(newCityId || 'burlington');
       this.tower = new Tower();
-      this.economy = new Economy(C.START_MONEY);
+      this.economy = new Economy(this.city.startMoney || C.START_MONEY);
       this.goals = new Goals();
       this.time = new GameTime();
       this.stars = 1;
       this.won = false;
+      this._levelDone = Campaign.isCompleted(this.city.id);
     }
 
     this.renderer = new Renderer(this.canvas);
+    this.renderer.setCity(this.city);
     this.ui = new UI(this);
     this.input = new Input(this.canvas, this);
 
@@ -51,18 +63,15 @@ class Game {
 
     // Title screen first; the world idles behind it until the player starts
     this.time.setSpeed(0);
-    const skipSplash = sessionStorage.getItem('skyrise.fresh');
+    const skipSplash = sessionStorage.getItem('skyrise.fresh') || newCityId;
     if (skipSplash) {
       sessionStorage.removeItem('skyrise.fresh');
       document.getElementById('splash').classList.add('gone');
       this._begin(true);
     } else {
       this.ui.showSplash(!!saved, isNew => {
-        if (isNew && saved) {
-          // wipe and reboot straight into a fresh tower
-          SaveSystem.clear();
-          sessionStorage.setItem('skyrise.fresh', '1');
-          location.reload();
+        if (isNew) {
+          this.ui.showCitySelect(true);
           return;
         }
         this._begin(!saved);
@@ -80,9 +89,10 @@ class Game {
     this.time.setSpeed(1);
     if (isNew) {
       this.ui.showHelp();
-      this.ui.setStatus('Start with a few Offices on floor 2, then connect an Elevator to the lobby.');
+      this.ui.setStatus(`Welcome to ${this.city.name}! Start with Offices on floor 2, then connect an Elevator.`);
+      this.ui.toast(`${this.city.emoji} ${this.city.name} — ${this.city.tagline}`, 'info', 7000);
     } else {
-      this.ui.toast('Welcome back — your tower missed you!', 'success');
+      this.ui.toast(`Welcome back to ${this.city.name} — your tower missed you!`, 'success');
     }
 
     // One-time hint for iOS Safari: installing makes it fullscreen
@@ -113,19 +123,33 @@ class Game {
     requestAnimationFrame(ts2 => this._loop(ts2));
   }
 
+  // ── City economics ────────────────────────────────────────
+  // Local construction cost (land & labour vary by city)
+  cost(base) {
+    return Math.round(base * (this.city.costMult || 1));
+  }
+
+  // Foot traffic a business needs, scaled by how busy this city is
+  needsPop(def) {
+    return Math.round(def.needsPop / (this.city.trafficMult || 1));
+  }
+
   // ── Building actions (called by Input / UI) ───────────────
   buildRoom(type, floor, col) {
     const def = C.ROOMS[type];
+    const cost = this.cost(def.cost);
     if (this.stars < def.unlock)
       return { ok: false, reason: `Locked — reach ${'★'.repeat(def.unlock)} first.` };
-    if (!this.economy.canAfford(def.cost))
-      return { ok: false, reason: `Not enough funds (${fmt$(def.cost)} needed).` };
+    if (!this.economy.canAfford(cost))
+      return { ok: false, reason: `Not enough funds (${fmt$(cost)} needed).` };
 
     const result = this.tower.placeRoom(type, floor, col, this.time.totalMin);
     if (!result.ok) return result;
 
-    this.economy.spend(def.cost);
+    this.economy.spend(cost);
     sfx.build();
+    Native.haptic('light');
+    this._lastBuild = { kind: 'room', obj: result.room, cost, at: performance.now() };
 
     if (type === 'CROWN' && !this.won) {
       this.won = true;
@@ -142,7 +166,7 @@ class Game {
     const unlock = type === 'EXPRESS' ? 3 : 1;
     if (this.stars < unlock)
       return { ok: false, reason: `Locked — reach ${'★'.repeat(unlock)} first.` };
-    const cost = def.base + def.perFloor * (top - bottom);
+    const cost = this.cost(def.base + def.perFloor * (top - bottom));
     if (!this.economy.canAfford(cost))
       return { ok: false, reason: `Not enough funds (${fmt$(cost)} needed).` };
 
@@ -151,6 +175,8 @@ class Game {
 
     this.economy.spend(cost);
     sfx.build();
+    Native.haptic('medium');
+    this._lastBuild = { kind: 'shaft', obj: result.shaft, cost, at: performance.now() };
     this.ui.setStatus(`${def.name} built — floors ${bottom} to ${top}.`);
     this._checkGoals();
     return result;
@@ -161,10 +187,10 @@ class Game {
     let refund = 0;
     if (target.kind === 'room') {
       if (!this.tower.demolishRoom(target.obj)) return;
-      refund = Math.round(target.obj.def.cost * C.DEMOLISH_REFUND);
+      refund = Math.round(this.cost(target.obj.def.cost) * C.DEMOLISH_REFUND);
     } else if (target.kind === 'shaft') {
       if (!this.tower.demolishShaft(target.obj)) return;
-      refund = Math.round(target.obj.cost() * C.DEMOLISH_REFUND);
+      refund = Math.round(this.cost(target.obj.cost()) * C.DEMOLISH_REFUND);
     }
     if (refund > 0) this.economy.earn(refund, 'refund');
     sfx.demolish();
@@ -176,6 +202,32 @@ class Game {
 
   demolishSelected() {
     this.demolish(this.renderer.selected);
+  }
+
+  // Full-refund undo of the most recent build, within a short window
+  get canUndo() {
+    return this._lastBuild &&
+      performance.now() - this._lastBuild.at < C.UNDO_WINDOW_MS;
+  }
+
+  undoLastBuild() {
+    const lb = this._lastBuild;
+    if (!lb || !this.canUndo) return;
+    this._lastBuild = null;
+    let removed = false;
+    if (lb.kind === 'room' && this.tower.rooms.has(lb.obj.id)) {
+      removed = this.tower.demolishRoom(lb.obj);
+    } else if (lb.kind === 'shaft' && this.tower.shafts.has(lb.obj.id)) {
+      removed = this.tower.demolishShaft(lb.obj);
+    }
+    if (!removed) return;
+    this.economy.earn(lb.cost, 'undo');
+    sfx.demolish();
+    if (this.renderer.selected && this.renderer.selected.obj === lb.obj) {
+      this.renderer.selected = null;
+      this.ui.showInfo(null);
+    }
+    this.ui.toast('Removed — full refund.', 'success', 2200);
   }
 
   inspectAt(floor, col) {
@@ -212,6 +264,7 @@ class Game {
     this.tower.evalPass();
     this._checkGoals();
     this._updateRating();
+    this._checkCampaign();
 
     if (hour === 17) this._rollHotelDemand();
     if (hour === 23) this._collectHotelIncome();
@@ -230,14 +283,14 @@ class Game {
     const pop = this.tower.population;
     for (const r of this.tower.rooms.values()) {
       if (r.kind !== 'commercial' || !r.occupied) continue;
-      r.struggling = pop < r.def.needsPop;
+      r.struggling = pop < this.needsPop(r.def);
       if (r.struggling && Math.random() < 0.3) {
         r.occupied = false;
         this.ui.toast(`${r.def.name} closed down — not enough foot traffic.`, 'warn');
       }
     }
 
-    const res = this.economy.collectQuarter(this.tower);
+    const res = this.economy.collectQuarter(this.tower, this.city.rentMult || 1);
     if (res.income > 0) sfx.cash();
     const sign = res.net >= 0 ? '+' : '';
     this.ui.toast(
@@ -264,10 +317,12 @@ class Game {
       if (r.occupied || r.kind === 'service' || r.kind === 'special' || r.kind === 'hotel') continue;
       if (r.floor !== 1 && !this.tower.hasAccess(r.floor)) continue;
       // Commercial won't open without the foot traffic it needs
-      if (r.kind === 'commercial' && this.tower.population < r.def.needsPop * 0.6) continue;
+      if (r.kind === 'commercial' && this.tower.population < this.needsPop(r.def) * 0.6) continue;
 
       const potential = this.tower.computeEval(r);
-      const chance = clamp(0.3 + (this.stars - 1) * 0.08 + (potential - 50) / 180, 0.05, 0.85);
+      const chance = clamp(
+        (0.3 + (this.stars - 1) * 0.08 + (potential - 50) / 180) * (this.city.fillRate || 1),
+        0.05, 0.9);
       if (Math.random() < chance) {
         r.occupied = true;
         r.eval = potential;
@@ -335,7 +390,9 @@ class Game {
         r.guestsTonight = 0;
         continue;
       }
-      const p = clamp(0.4 + this.stars * 0.1 + (r.eval - 50) / 250, 0.1, 0.95);
+      const p = clamp(
+        (0.4 + this.stars * 0.1 + (r.eval - 50) / 250) * (this.city.hotelDemand || 1),
+        0.1, 0.97);
       r.guestsTonight = Math.random() < p ? r.def.pop : 0;
     }
   }
@@ -344,7 +401,8 @@ class Game {
     let total = 0, rooms = 0;
     for (const r of this.tower.rooms.values()) {
       if (r.kind !== 'hotel' || r.guestsTonight === 0) continue;
-      total += Math.round(r.def.nightly * (0.85 + Math.random() * 0.3));
+      total += Math.round(r.def.nightly * (this.city.rentMult || 1) *
+                          (0.85 + Math.random() * 0.3));
       rooms++;
     }
     if (total > 0) {
@@ -397,6 +455,7 @@ class Game {
     if (stars > this.stars) {
       this.stars = stars;
       sfx.star();
+      Native.haptic('success');
       this.renderer.burstConfetti(140);
       this.ui.showStarUp(stars);
       this.ui.markGoalsDirty();
@@ -406,6 +465,23 @@ class Game {
       this.stars = stars;
       this.ui.toast('Your tower rating dropped! Keep tenants happy.', 'warn');
     }
+  }
+
+  // ── Campaign (city levels) ────────────────────────────────
+  _checkCampaign() {
+    if (this._levelDone || !this.city.win) return;
+    const win = this.city.win;
+    if (this.stars < win.stars) return;
+    if (this.tower.population < win.pop) return;
+    if (win.crown && !this.won) return;
+
+    this._levelDone = true;
+    Campaign.complete(this.city.id);
+    SaveSystem.save(this);
+    sfx.star();
+    Native.haptic('success');
+    this.renderer.burstConfetti(200);
+    this.ui.showLevelComplete(this.city);
   }
 
   _checkGoals() {
@@ -427,6 +503,7 @@ class Game {
 }
 
 // ── Boot ──────────────────────────────────────────────────────
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  await SaveSystem.restoreFromNative();
   window.game = new Game();
 });

@@ -27,14 +27,15 @@ class Economy {
   }
 
   // Rent day: collect rent from every occupied room, pay upkeep on
-  // services and elevators. Returns {income, expense, net, breakdown}.
-  collectQuarter(tower) {
+  // services and elevators. rentMult is the city's market level.
+  // Returns {income, expense, net, breakdown}.
+  collectQuarter(tower, rentMult = 1) {
     const by = new Map();
     const add = (label, amt) => by.set(label, (by.get(label) || 0) + amt);
 
     let income = 0, expense = 0;
     for (const r of tower.rooms.values()) {
-      const rent = r.quarterlyRent();
+      const rent = Math.round(r.quarterlyRent() * rentMult);
       if (rent > 0) { income += rent; add(r.name, rent); }
       const up = r.quarterlyUpkeep();
       if (up > 0) { expense += up; add(r.name + ' upkeep', -up); }
