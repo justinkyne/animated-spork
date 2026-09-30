@@ -368,41 +368,46 @@ body.render #ui { display: none; }
     <h1 id="cover-title">Paying It Back, Dad</h1>
     <button id="play" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l16 9-16 9z"/></svg></button>
     <div class="chips" id="cuts">
-      <button data-cut="full">Full · 64s</button>
-      <button data-cut="30">:30 cut</button>
-      <button data-cut="15">:15 cut</button>
+      <button data-cut="full" data-label="Full">Full</button>
+      <button data-cut="short" data-label="Short">Short</button>
+      <button data-cut="teaser" data-label="Teaser">Teaser</button>
     </div>
     <div class="chips"><button id="snd" aria-pressed="true">Sound on</button></div>
   </div>
   <div id="prog"><i></i></div>
 </div>
 
+<script src="vo.js"></script>
 <script>
 'use strict';
 
 /* ════════════════════════════════════════════════════════════════════
    Timeline. Everything on screen and every sound is a pure function of
    master time t (seconds), so the page can play live or be rendered
-   frame-by-frame (render.mjs) with identical results.
+   frame-by-frame (render.mjs) with identical results. Scenes are laid
+   end to end from LEN; all cues inside a scene are offsets from its start.
    ════════════════════════════════════════════════════════════════════ */
 
 const W = 1080, H = 1920, HZ = 1380;            // stage size, horizon line
-const END = 64;
-const SC = {                                     // scene windows, master seconds
-  s1: [0, 8], s2: [8, 15.3], s3: [15.3, 22.8], s4: [22.8, 30.3], s5: [30.3, 38.8],
-  s6a: [38.8, 40.6], s6: [40.6, 49.8], s6b: [49.8, 52.8],
-  s7a: [52.8, 56.2], s7b: [56.2, 59.8], end: [59.8, END],
+const CARD_LEN = 2.45;                           // each "try it" bill card
+const LEN = {
+  s1: 8, s2: 8.3, s3: 9.2, s4: 8.4, s5: 10, s6a: 2.1, s6: CARD_LEN * 4,
+  s6b: 3.2, s7a: 4.4, s7b: 3.9, end: 4.2,
 };
-const CARD_T0 = 40.6, CARD_LEN = 2.3;
+const SC = {};
+let END = 0;
+for (const k in LEN) { SC[k] = [END, END + LEN[k]]; END += LEN[k]; }
+const at = (k, dt) => SC[k][0] + dt;             // scene-relative → master time
 
 const params = new URLSearchParams(location.search);
 const RENDER = params.has('render');
 const PAID_FOR = (params.get('paidfor') || '').trim();
-const CUT_END = PAID_FOR ? END : 62.4;           // a disclaimer needs its full 4s on screen
+const CUT_END = PAID_FOR ? END : at('end', 2.6); // a disclaimer needs its full 4s on screen
 const CUTS = {                                    // cutdowns = spans of the master timeline
   full: [[0, END]],
-  '30': [[0, 4.5], [15.3, 21.8], [32.7, 45.2], [49.8, 52.8], [56.2, CUT_END]],
-  '15': [[32.7, 38.8], [40.6, 45.2], [49.8, 52.8], [59.8, CUT_END]],
+  short: [[0, 3.9], [SC.s3[0], at('s3', 8.9)], [at('s5', 3.45), at('s6', 2 * CARD_LEN)],
+          SC.s6b, [SC.s7b[0], CUT_END]],
+  teaser: [[at('s5', 3.45), SC.s5[1]], [SC.s6[0], at('s6', 2 * CARD_LEN)], SC.s6b, [SC.end[0], CUT_END]],
 };
 let cutName = CUTS[params.get('cut')] ? params.get('cut') : 'full';
 
@@ -425,6 +430,7 @@ function cutJoins(name) {                          // cut-time positions of hard
 
 /* ── helpers ───────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
+const qa = sel => Array.from(document.querySelectorAll(sel));
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const prog = (t, at, d) => clamp((t - at) / d);
 const outC = x => 1 - Math.pow(1 - x, 3);
@@ -616,6 +622,7 @@ const CARDS = [
   { cat: 'The IRS', line: 'Balance due: $3,212', stamp: 'Audited', bg: '#e1eaf5',
     icon: SVG('<path d="M8 36L50 12l42 24z"/><path d="M20 44v34M40 44v34M60 44v34M80 44v34"/><path d="M8 88h84"/>') },
 ];
+const CARD_BUBBLE = .25, CARD_STAMP = 1.55;
 let shownCard = -1;
 function setCard(i) {
   if (i === shownCard) return;
@@ -629,24 +636,26 @@ function setCard(i) {
   $('c-stamp').textContent = c.stamp;
 }
 
-/* ── scene updaters (master t) ─────────────────────────── */
-const qa = sel => Array.from(document.querySelectorAll(sel));
+/* ── scene updaters (scene-local time lt) ──────────────── */
 const R_LINES = qa('#s3 .receipt > div');
-const R_TIMES = [16.0, 16.15, 16.3, 16.55, 17.05, 17.55, 18.05, 18.45, 18.6, 18.9, 19.45, 19.6];
+const R_TIMES = [.6, .72, .84, 1.0, 2.95, 5.0, 5.5, 5.62, 5.75, 5.95, 6.25, 6.37];  // synced to the VO
+const S3_STAMP = 6.55;
 const BARS = qa('#s4 .bar-row');
-const BAR_TIMES = [23.35, 23.6, 26.5, 26.75];
+const BAR_TIMES = [.55, .8, 5.3, 5.55];
+const S2_ITEMS = [2.2, 3.5, 4.8];
+const S5 = { l1: .15, q1: .35, l2: 3.5, q2a: 4.6, q2b: 5.85, stamp: 7.75 };
 
 const UPD = {
   s1(t) {
     drawSky(t);
-    $('s1-zoom').style.transform = `scale(${1 + .06 * t / 8})`;
+    $('s1-zoom').style.transform = `scale(${1 + .06 * t / LEN.s1})`;
     const pn = prog(t, .2, 1);
     $('s1-names').style.opacity = pn;
     $('s1-names').style.filter = `blur(${(1 - pn) * 14}px)`;
     fadeUp($('s1-loc'), t, .7, { d: .6, dy: 20 });
     fadeUp($('s1-post'), t, .9, { d: .45, dy: -40 });
     typeOn($('s1-sponsor'), t, 1.35, 22);
-    [[2.8, 4.6], [4.6, 6.3], [6.3, 8]].forEach(([a, b], i) => {
+    [[2.8, 4.4], [4.4, 5.85], [5.85, LEN.s1]].forEach(([a, b], i) => {
       const el = $('s1-cap' + i), pin = prog(t, a, .35), pout = prog(t, b - .2, .2);
       el.style.opacity = pin * (1 - pout);
       el.style.filter = `blur(${(1 - pin) * 10}px)`;
@@ -654,86 +663,87 @@ const UPD = {
     });
   },
   s2(t) {
-    fadeUp($('s2-k'), t, 8.3, { d: .3, dy: 20 });
-    slam($('s2-name'), t, 8.5, { d: .22, s: 1.3 });
-    fadeUp($('s2-desc'), t, 9.2, { d: .35 });
-    [10.1, 11.4, 12.7].forEach((at, i) => fadeUp($('s2-t' + i), t, at, { d: .35, dy: 0, dx: -60 }));
-    qa('#s2-t2 span')[0].style.backgroundSize = `${outC(prog(t, 13.05, .6)) * 100}% 100%`;
+    fadeUp($('s2-k'), t, .3, { d: .3, dy: 20 });
+    slam($('s2-name'), t, .5, { d: .22, s: 1.3 });
+    fadeUp($('s2-desc'), t, 1.2, { d: .35 });
+    S2_ITEMS.forEach((a, i) => fadeUp($('s2-t' + i), t, a, { d: .35, dy: 0, dx: -60 }));
+    qa('#s2-t2 span')[0].style.backgroundSize = `${outC(prog(t, S2_ITEMS[2] + .3, .6)) * 100}% 100%`;
   },
   s3(t) {
-    fadeUp($('s3-title'), t, 15.4, { d: .3, dy: -30 });
-    fadeUp($('s3-sub'), t, 15.6, { d: .3, dy: 0 });
-    const e = outC(prog(t, 15.5, .5));
+    fadeUp($('s3-title'), t, .1, { d: .3, dy: -30 });
+    fadeUp($('s3-sub'), t, .3, { d: .3, dy: 0 });
+    const e = outC(prog(t, .2, .5));
     $('s3-wrap').style.transform = `translateY(${(1 - e) * 700}px)`;
     R_LINES.forEach((el, i) => { el.style.opacity = t >= R_TIMES[i] ? 1 : 0; });
-    slam($('s3-stamp'), t, 20.1, { d: .18, s: 2.3, rot: -13, op: .92 });
-    fadeUp($('s3-note'), t, 20.7, { d: .3, dy: 24 });
+    slam($('s3-stamp'), t, S3_STAMP, { d: .18, s: 2.3, rot: -13, op: .92 });
+    fadeUp($('s3-note'), t, 7.2, { d: .3, dy: 24 });
   },
   s4(t) {
-    fadeUp($('s4-k'), t, 22.9, { d: .3, dy: 16 });
-    fadeUp(qa('#s4-a h2')[0], t, 23.0, { d: .35 });
-    fadeUp(qa('#s4-b h2')[0], t, 26.2, { d: .35 });
+    fadeUp($('s4-k'), t, .1, { d: .3, dy: 16 });
+    fadeUp(qa('#s4-a h2')[0], t, .2, { d: .35 });
+    fadeUp(qa('#s4-b h2')[0], t, 5.0, { d: .35 });
     BARS.forEach((row, i) => {
-      const at = BAR_TIMES[i];
-      row.style.opacity = prog(t, at - .1, .15);
-      const e = outC(prog(t, at, .9));
+      const a = BAR_TIMES[i];
+      row.style.opacity = prog(t, a - .1, .15);
+      const e = outC(prog(t, a, .9));
       const b = row.querySelector('b'), v = +b.dataset.v;
       row.querySelector('i').style.width = `${v / 1000 * e}%`;
       b.textContent = b.dataset.pre + Math.round(v * e).toLocaleString('en-US');
     });
     const [pa, pb] = qa('#s4 .punch');
-    slam(pa, t, 24.75, { d: .2, s: 1.25 });
-    slam(pb, t, 27.85, { d: .2, s: 1.25 });
-    $('s4-foot').style.opacity = prog(t, 23.2, .4);
+    slam(pa, t, 4.0, { d: .2, s: 1.25 });
+    slam(pb, t, 7.05, { d: .2, s: 1.25 });
+    $('s4-foot').style.opacity = prog(t, .4, .4);
   },
   s5(t) {
     const [l1, l2] = qa('#s5 .q-lbl'), [q1] = qa('#s5-q1 blockquote > span'), [q2a, q2b] = qa('#s5-q2 blockquote > span');
-    fadeUp(l1, t, 30.45, { d: .3, dy: 12 });
-    fadeUp(q1, t, 30.65, { d: .4, dy: 30 });
-    fadeUp(l2, t, 32.8, { d: .3, dy: 12 });
-    fadeUp(q2a, t, 33.5, { d: .3, dy: 20 });
-    fadeUp(q2b, t, 34.15, { d: .35, dy: 30 });
-    slam($('s5-stamp'), t, 35.9, { d: .18, s: 2.2, rot: -6 });
-    $('s5-foot').style.opacity = prog(t, 36.3, .4);
+    fadeUp(l1, t, S5.l1, { d: .3, dy: 12 });
+    fadeUp(q1, t, S5.q1, { d: .4, dy: 30 });
+    fadeUp(l2, t, S5.l2, { d: .3, dy: 12 });
+    fadeUp(q2a, t, S5.q2a, { d: .3, dy: 20 });
+    fadeUp(q2b, t, S5.q2b, { d: .35, dy: 30 });
+    slam($('s5-stamp'), t, S5.stamp, { d: .18, s: 2.2, rot: -6 });
+    $('s5-foot').style.opacity = prog(t, S5.stamp + .35, .4);
   },
   s6a(t) {
     const [a, b] = qa('#s6a .anton');
-    slam(a, t, 38.85, { d: .18, s: 1.4 });
-    slam(b, t, 39.45, { d: .18, s: 1.4 });
+    slam(a, t, .05, { d: .18, s: 1.4 });
+    slam(b, t, .9, { d: .18, s: 1.4 });
   },
   s6(t) {
-    const i = clamp(Math.floor((t - CARD_T0) / CARD_LEN), 0, CARDS.length - 1);
+    const i = clamp(Math.floor(t / CARD_LEN), 0, CARDS.length - 1);
     setCard(i);
-    const at = CARD_T0 + i * CARD_LEN;
-    fadeUp($('card'), t, at, { d: .22, dy: 0, dx: 260 });
-    fadeUp($('c-bubble'), t, at + .45, { d: .25, dy: 40 });
-    slam($('c-stamp'), t, at + 1.1, { d: .16, s: 2.4, rot: -9, op: .95 });
+    const a = i * CARD_LEN;
+    fadeUp($('card'), t, a, { d: .22, dy: 0, dx: 260 });
+    fadeUp($('c-bubble'), t, a + CARD_BUBBLE, { d: .22, dy: 40 });
+    slam($('c-stamp'), t, a + CARD_STAMP, { d: .16, s: 2.4, rot: -9, op: .95 });
   },
   s6b(t) {
     const [a, b] = qa('#s6b .anton');
-    fadeUp(a, t, 49.9, { d: .3, dy: 20 });
-    slam(b, t, 50.55, { d: .2, s: 1.3 });
+    fadeUp(a, t, .1, { d: .3, dy: 20 });
+    slam(b, t, .85, { d: .2, s: 1.3 });
   },
   s7a(t) {
     const [a, b] = qa('#s7a .center > div');
-    fadeUp(a, t, 52.95, { d: .45, dy: 30 });
-    slam(b, t, 54.05, { d: .22, s: 1.2 });
+    fadeUp(a, t, .15, { d: .45, dy: 30 });
+    slam(b, t, 2.05, { d: .22, s: 1.2 });
   },
   s7b(t) {
     const [a, b] = qa('#s7b .center > div');
-    fadeUp(a, t, 56.3, { d: .4, dy: 30 });
-    slam(b, t, 57.35, { d: .22, s: 1.35 });
+    fadeUp(a, t, .1, { d: .4, dy: 30 });
+    slam(b, t, 2.0, { d: .22, s: 1.35 });
   },
   end(t) {
-    slam($('end-tag'), t, 59.9, { d: .22, s: 1.3 });
-    fadeUp($('end-sub'), t, 60.25, { d: .35, dy: 24 });
-    fadeUp($('end-real'), t, 60.5, { d: .35, dy: 24 });
-    fadeUp($('end-src'), t, 60.7, { d: .4, dy: 24 });
+    slam($('end-tag'), t, .1, { d: .22, s: 1.3 });
+    fadeUp($('end-sub'), t, .45, { d: .35, dy: 24 });
+    fadeUp($('end-real'), t, .7, { d: .35, dy: 24 });
+    fadeUp($('end-src'), t, .9, { d: .4, dy: 24 });
   },
 };
 
-const IMPACTS = [8.5, 20.1, 35.9, 38.85, 39.45, 50.55, 54.05, 57.35, 59.9,
-  ...CARDS.map((_, i) => CARD_T0 + i * CARD_LEN + 1.1)];
+const IMPACTS = [at('s2', .5), at('s3', S3_STAMP), at('s5', S5.stamp), at('s6a', .05), at('s6a', .9),
+  at('s6b', .85), at('s7a', 2.05), at('s7b', 2.0), at('end', .1),
+  ...CARDS.map((_, i) => at('s6', i * CARD_LEN + CARD_STAMP))];
 const TEARS = qa('#tears i');
 const scenes = Object.fromEntries(Object.keys(SC).map(k => [k, $(k)]));
 const stage = $('stage'), flashEl = $('flash');
@@ -742,7 +752,7 @@ function renderMaster(t, cutT = -1, joins = []) {
   for (const k in SC) {
     const [a, b] = SC[k], on = t >= a && t < b;
     scenes[k].style.display = on ? 'block' : 'none';
-    if (on) UPD[k](t);
+    if (on) UPD[k](t - a);
   }
   let tx = 0, ty = 0, sc = 1, filt = 'none', flash = 0;
   for (const ti of IMPACTS) {
@@ -779,39 +789,125 @@ function renderMaster(t, cutT = -1, joins = []) {
 const renderAt = ct => renderMaster(cutToMaster(cutName, ct), ct, cutJoins(cutName));
 
 /* ════════════════════════════════════════════════════════════════════
-   Sound: synthesized with WebAudio (no audio files). The same event list
-   plays live or renders offline to WAV for the MP4.
+   Sound: voiceover (vo.js, Kokoro TTS) + a music bed + sound effects,
+   all scheduled with WebAudio from one event list. The music ducks under
+   the voice. The same list plays live or renders offline for the MP4.
    ════════════════════════════════════════════════════════════════════ */
 
+const VO = window.VO || {};
+const voDur = id => VO[id] ? VO[id].d : 0;
 const NOTE = { F4: 349.23, G4: 392, A4: 440, B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880, C6: 1046.5 };
+
+function bedInvestigation(ev, t0, t1, thinFrom) {  // 96 bpm, D minor: pulse bass, clock ticks, pads
+  const beat = .625, e8 = beat / 2, bar = beat * 4;
+  const prog = [[146.83, [293.66, 349.23, 440]], [116.54, [233.08, 293.66, 349.23]],
+                [98, [196, 233.08, 293.66]], [110, [220, 277.18, 329.63]]];
+  for (let bi = 0, bt = t0; bt < t1 - .05; bi++, bt += bar) {
+    const [root, triad] = prog[bi % 4];
+    for (const f of triad) ev.push({ t: bt, type: 'pad', f, dur: bar, vol: .024, clip: t1, bus: 'music' });
+    for (let k = 0; k < 8; k++) {
+      const t = bt + k * e8;
+      if (t >= t1) break;
+      ev.push({ t, type: 'hat', vol: k % 2 ? .035 : .06, clip: t1, bus: 'music' });
+      if (t >= thinFrom) continue;
+      ev.push({ t, type: 'pbass', f: root, vol: k % 2 ? .08 : .12, clip: t1, bus: 'music' });
+      if (k % 4 === 0) ev.push({ t, type: 'kick', vol: .32, bus: 'music' });
+    }
+  }
+}
+function bedComedy(ev, t0, t1) {                   // 120 bpm, F major oom-pah: "sure, let's try that"
+  const beat = .5, bar = 2;
+  const prog = [[174.61, [349.23, 440, 523.25]], [130.81, [329.63, 392, 523.25]],
+                [146.83, [293.66, 349.23, 440]], [116.54, [293.66, 349.23, 466.16]]];
+  for (let bi = 0, bt = t0; bt < t1 - .05; bi++, bt += bar) {
+    const [root, tri] = prog[bi % 4];
+    for (let b = 0; b < 4; b++) {
+      const t = bt + b * beat;
+      if (t >= t1) break;
+      if (b % 2 === 0) ev.push({ t, type: 'pluck', f: b ? root * 1.5 : root, vol: .24, dur: .3, clip: t1, bus: 'music' });
+      else {
+        for (const f of tri) ev.push({ t, type: 'pluck', f, vol: .075, dur: .14, clip: t1, bus: 'music' });
+        ev.push({ t, type: 'clap', vol: .12, bus: 'music' });
+      }
+      [0, .25].forEach((o, j) => {
+        if (t + o < t1) ev.push({ t: t + o, type: 'pluck', f: tri[(b * 2 + j) % 3] * 2, vol: .055, dur: .1, clip: t1, bus: 'music' });
+      });
+    }
+  }
+  ev.push({ t: t1, type: 'slide', bus: 'music' });  // the deflating "wah" into "Weird."
+}
+function bedDrama(ev, t0, t1) {                    // low drone, heartbeat, darkening pads
+  ev.push({ t: t0, type: 'drone', f: 73.42, dur: t1 - t0, vol: .1, clip: t1, bus: 'music' });
+  for (let t = t0 + .6; t < t1 - .25; t += 1.1) {
+    ev.push({ t, type: 'kick', vol: .34, bus: 'music' }, { t: t + .2, type: 'kick', vol: .2, bus: 'music' });
+  }
+  [[SC.s7a, [293.66, 349.23, 440]], [SC.s7b, [233.08, 293.66, 349.23]]].forEach(([[a, b], tri]) => {
+    for (const f of tri) ev.push({ t: a, type: 'pad', f, dur: b - a, vol: .03, cut: 1800, clip: b, bus: 'music' });
+  });
+}
+
 function masterEvents() {
   const ev = [];
+  const fx = (t, type, o = {}) => ev.push({ t, type, ...o });
+  const vo = (id, k, dt) => ev.push({ t: at(k, dt), type: 'vo', id, bus: 'vo' });
+
+  // S1: music box, fireworks, and the wedding-video narration, all cut off by the record scratch
+  const s1end = SC.s1[1];
   const chords = [['C5', 'E5', 'G5', 'C6'], ['A4', 'C5', 'E5', 'A5'], ['F4', 'A4', 'C5', 'F5'], ['G4', 'B4', 'D5', 'G5']];
-  const pattern = [0, 1, 2, 3, 2, 1, 2, 1];
   chords.forEach((ch, ci) => {
-    pattern.forEach((n, k) => ev.push({ t: ci * 2 + k * .25, type: 'note', f: NOTE[ch[n]], clip: SC.s1[1] }));
-    ev.push({ t: ci * 2, type: 'bass', f: NOTE[ch[0]] / 4, dur: 2, clip: SC.s1[1] });
+    [0, 1, 2, 3, 2, 1, 2, 1].forEach((n, k) => fx(ci * 2 + k * .25, 'note', { f: NOTE[ch[n]], clip: s1end, bus: 'music' }));
+    fx(ci * 2, 'bass', { f: NOTE[ch[0]] / 4, dur: 2, clip: s1end, bus: 'music' });
   });
   for (const b of BURSTS) {
-    if (b.t0 - .6 >= 0) ev.push({ t: b.t0 - .6, type: 'whistle', clip: SC.s1[1] });
-    ev.push({ t: b.t0, type: 'pop', vol: .22 + (b.t0 * 7 % 3) * .05, clip: SC.s1[1] + .4 });
+    if (b.t0 - .6 >= 0) fx(b.t0 - .6, 'whistle', { clip: s1end });
+    fx(b.t0, 'pop', { vol: .2 + (b.t0 * 7 % 3) * .04, clip: s1end + .4 });
   }
-  ev.push({ t: 8.0, type: 'scratch' }, { t: 8.5, type: 'thud' });
-  [10.1, 11.4, 12.7].forEach(t => ev.push({ t, type: 'tick' }));
-  ev.push({ t: 15.5, type: 'whoosh', dur: .45 });
-  R_TIMES.forEach((t, i) => ev.push({ t, type: 'print', dur: [3, 4, 8, 11].includes(i) ? .1 : .24 }));
-  ev.push({ t: 20.1, type: 'stamp' });
-  ev.push({ t: 23.35, type: 'riser' }, { t: 26.5, type: 'riser' }, { t: 24.75, type: 'hit' }, { t: 27.85, type: 'hit' });
-  ev.push({ t: 30.45, type: 'tick' }, { t: 32.8, type: 'tick' }, { t: 35.9, type: 'stamp' });
-  ev.push({ t: 38.85, type: 'hit' }, { t: 39.45, type: 'hit' });
+  vo('n01', 's1', .45); vo('n02', 's1', 2.8); vo('n03', 's1', 4.4); vo('n04', 's1', 5.85);
+
+  // S2: who paid
+  fx(at('s2', 0), 'scratch'); fx(at('s2', .5), 'thud');
+  S2_ITEMS.forEach(dt => fx(at('s2', dt), 'tick'));
+  vo('n05', 's2', .45); vo('n06', 's2', 3.7);
+
+  // S3: the bill
+  fx(at('s3', .2), 'whoosh', { dur: .45 });
+  R_TIMES.forEach((dt, i) => fx(at('s3', dt), 'print', { dur: [2, 6, 7, 10].includes(i) ? .1 : .22 }));
+  fx(at('s3', S3_STAMP), 'stamp');
+  vo('n07', 's3', .75); vo('n08', 's3', 7.2);
+
+  // S4: for scale
+  fx(at('s4', .55), 'riser'); fx(at('s4', 5.3), 'riser'); fx(at('s4', 4.0), 'hit'); fx(at('s4', 7.05), 'hit');
+  vo('n09', 's4', .3); vo('n10', 's4', 5.05);
+
+  // S5: the excuse; the music drops out for the punchline
+  fx(at('s5', S5.l2), 'tick'); fx(at('s5', S5.stamp), 'stamp');
+  vo('n11', 's5', .3); vo('n12', 's5', 3.95); vo('n13', 's5', S5.q2b);
+  bedInvestigation(ev, at('s2', .6), at('s5', S5.q2b - .1), SC.s5[0]);
+  fx(at('s5', S5.stamp), 'drone', { f: 73.42, dur: LEN.s5 - S5.stamp, vol: .07, clip: SC.s5[1], bus: 'music' });
+
+  // S6: let's all try it
+  fx(at('s6a', .05), 'hit'); fx(at('s6a', .9), 'hit');
+  vo('n14', 's6a', .05);
   CARDS.forEach((_, i) => {
-    const at = CARD_T0 + i * CARD_LEN;
-    ev.push({ t: at, type: 'whoosh', dur: .25 }, { t: at + .45, type: 'tick' }, { t: at + 1.1, type: 'stamp' });
-    if (i === 0) ev.push({ t: at + 1.1, type: 'buzz' });
+    const a = i * CARD_LEN;
+    fx(at('s6', a), 'whoosh', { dur: .25 });
+    fx(at('s6', a + CARD_STAMP), 'stamp');
+    if (i === 0) fx(at('s6', a + CARD_STAMP), 'buzz');
+    vo('c' + (i + 1), 's6', a + CARD_BUBBLE);
   });
-  ev.push({ t: 49.9, type: 'tick' }, { t: 50.55, type: 'hit' }, { t: 54.05, type: 'boom' }, { t: 57.35, type: 'boom' });
-  ['C5', 'E5', 'G5', 'C6'].forEach((n, k) => ev.push({ t: 59.9 + k * .09, type: 'note', f: NOTE[n], dur: 3.2, vol: .14 }));
-  ev.push({ t: 59.9, type: 'bass', f: NOTE.C5 / 4, dur: 3.5 });
+  bedComedy(ev, SC.s6a[0], SC.s6b[0]);
+  fx(at('s6b', .85), 'hit');
+  vo('n15', 's6b', .1); vo('n16', 's6b', .85);
+
+  // S7: the close
+  fx(at('s7a', 2.05), 'boom'); fx(at('s7b', 2.0), 'boom');
+  vo('n17', 's7a', .15); vo('n18', 's7a', 2.05);
+  vo('n19', 's7b', .1); vo('n20', 's7b', 2.0);
+  bedDrama(ev, SC.s7a[0], SC.end[0]);
+
+  // End card: the music box returns for one sweet, ironic chord
+  ['C5', 'E5', 'G5', 'C6'].forEach((n, k) => fx(at('end', .1 + k * .09), 'note', { f: NOTE[n], dur: 3.2, vol: .14, bus: 'music' }));
+  fx(at('end', .1), 'bass', { f: NOTE.C5 / 4, dur: 3.5, bus: 'music' });
   return ev;
 }
 function cutEvents(name) {
@@ -825,6 +921,16 @@ function cutEvents(name) {
     }
     if (acc > 0) out.push({ t: acc, type: 'whoosh', dur: .2, vol: .18 });
     acc += b - a;
+  }
+  return out;
+}
+function voWindows(events) {                       // merged [start, end] spans where the voice speaks
+  const w = events.filter(e => e.type === 'vo')
+    .map(e => [e.t - .06, e.t + Math.min(voDur(e.id), e.max ?? 99) + .12]).sort((x, y) => x[0] - y[0]);
+  const out = [];
+  for (const s of w) {
+    if (out.length && s[0] <= out[out.length - 1][1]) out[out.length - 1][1] = Math.max(out[out.length - 1][1], s[1]);
+    else out.push(s);
   }
   return out;
 }
@@ -863,7 +969,36 @@ function filt(c, type, f, q = 1) {
   b.type = type; b.frequency.value = f; b.Q.value = q;
   return b;
 }
+function swell(c, t, d, vol, atk, rel) {           // linear attack / hold / release gain
+  const g = c.createGain(), a = Math.min(atk, d * .4), r = Math.min(rel, d * .4);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + a);
+  g.gain.setValueAtTime(vol, t + d - r);
+  g.gain.linearRampToValueAtTime(0, t + d);
+  return g;
+}
+
+const voBufs = new Map();                          // sampleRate → { id: AudioBuffer }
+async function decodeVO(c) {
+  if (voBufs.has(c.sampleRate)) return;
+  const map = {};
+  await Promise.all(Object.entries(VO).map(async ([id, v]) => {
+    const bin = atob(v.src.split(',')[1]), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    map[id] = await c.decodeAudioData(u8.buffer);
+  }));
+  voBufs.set(c.sampleRate, map);
+}
+
 const SFX = {
+  vo(c, out, t, e) {
+    const buf = (voBufs.get(c.sampleRate) || {})[e.id];
+    if (!buf) return;
+    const off = e.off || 0, d = Math.min(buf.duration - off, e.max ?? 99);
+    if (d <= 0) return;
+    const s = c.createBufferSource();
+    s.buffer = buf; s.connect(out); s.start(t, off, d);
+  },
   note(c, out, t, e) {                              // music-box bell
     const dur = Math.min(e.dur ?? 1.4, e.max ?? 99);
     const g = env(c, t, .004, e.vol ?? .15, dur);
@@ -876,6 +1011,45 @@ const SFX = {
   bass(c, out, t, e) {
     const dur = Math.min(e.dur ?? 2, e.max ?? 99);
     osc(c, 'triangle', e.f, t, dur).connect(env(c, t, .04, .16, dur)).connect(out);
+  },
+  pbass(c, out, t, e) {                             // plucked synth bass
+    const d = Math.min(.24, e.max ?? 99), lp = filt(c, 'lowpass', 1100, 3);
+    lp.frequency.exponentialRampToValueAtTime(260, t + d);
+    osc(c, 'sawtooth', e.f, t, d).connect(lp).connect(env(c, t, .005, e.vol ?? .1, d)).connect(out);
+  },
+  pad(c, out, t, e) {                               // detuned saw pad
+    const d = Math.min(e.dur, e.max ?? 99);
+    if (d <= .05) return;
+    const lp = filt(c, 'lowpass', e.cut ?? 1300, .7);
+    for (const det of [-8, 8]) { const o = osc(c, 'sawtooth', e.f, t, d); o.detune.value = det; o.connect(lp); }
+    lp.connect(swell(c, t, d, e.vol ?? .03, .5, .5)).connect(out);
+  },
+  drone(c, out, t, e) {
+    const d = Math.min(e.dur, e.max ?? 99);
+    if (d <= .05) return;
+    const lp = filt(c, 'lowpass', 460, 1);
+    for (const [m, det] of [[1, -6], [1, 6], [2, 0]]) { const o = osc(c, 'sawtooth', e.f * m, t, d); o.detune.value = det; o.connect(lp); }
+    lp.connect(swell(c, t, d, e.vol ?? .1, 2.5, .4)).connect(out);
+  },
+  pluck(c, out, t, e) {
+    const d = Math.min(e.dur ?? .18, e.max ?? 99);
+    osc(c, 'triangle', e.f, t, d).connect(filt(c, 'lowpass', 2600)).connect(env(c, t, .003, e.vol ?? .08, d)).connect(out);
+  },
+  kick(c, out, t, e) {
+    const o = osc(c, 'sine', 120, t, .35);
+    o.frequency.exponentialRampToValueAtTime(42, t + .2);
+    o.connect(env(c, t, .002, e.vol ?? .4, .32)).connect(out);
+  },
+  hat(c, out, t, e) {
+    noise(c, t, .03).connect(filt(c, 'highpass', 8000)).connect(env(c, t, .001, e.vol ?? .05, .025)).connect(out);
+  },
+  clap(c, out, t, e) {
+    noise(c, t, .12).connect(filt(c, 'bandpass', 1600, 1.5)).connect(env(c, t, .002, e.vol ?? .1, .1)).connect(out);
+  },
+  slide(c, out, t) {                                // sad "wah" down-glide
+    const o = osc(c, 'triangle', 392, t, .7);
+    o.frequency.exponentialRampToValueAtTime(140, t + .6);
+    o.connect(filt(c, 'lowpass', 1500)).connect(env(c, t, .02, .14, .65)).connect(out);
   },
   whistle(c, out, t, e) {
     const dur = Math.min(.6, e.max ?? 99), o = osc(c, 'sine', 900, t, dur);
@@ -926,12 +1100,12 @@ const SFX = {
     const d = e.dur ?? .22, am = c.createGain(), lg = c.createGain(), g = c.createGain();
     am.gain.value = .5; lg.gain.value = .5;
     osc(c, 'square', 55, t, d).connect(lg).connect(am.gain);
-    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.05, t + .01);
-    g.gain.setValueAtTime(.05, t + d); g.gain.linearRampToValueAtTime(0, t + d + .02);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.04, t + .01);
+    g.gain.setValueAtTime(.04, t + d); g.gain.linearRampToValueAtTime(0, t + d + .02);
     osc(c, 'square', 1900, t, d).connect(am).connect(filt(c, 'bandpass', 2400, 2)).connect(g).connect(out);
   },
   tick(c, out, t) {
-    noise(c, t, .04).connect(filt(c, 'highpass', 2500)).connect(env(c, t, .001, .35, .035)).connect(out);
+    noise(c, t, .04).connect(filt(c, 'highpass', 2500)).connect(env(c, t, .001, .3, .035)).connect(out);
   },
   whoosh(c, out, t, e) {
     const d = e.dur ?? .3, bp = filt(c, 'bandpass', 300, .9), g = c.createGain();
@@ -954,16 +1128,36 @@ const SFX = {
     noise(c, t, .6).connect(lp).connect(env(c, t, .002, .5, .6)).connect(out);
   },
 };
-function makeBus(c) {
-  const g = c.createGain(), comp = c.createDynamicsCompressor();
-  g.gain.value = .85;
-  comp.threshold.value = -10; comp.knee.value = 6; comp.ratio.value = 6; comp.attack.value = .003; comp.release.value = .2;
-  g.connect(comp).connect(c.destination);
-  return g;
+
+const MIX = { vo: 1.0, sfx: .7, music: .5, duck: .32 };
+function makeBuses(c) {
+  const master = c.createGain(), comp = c.createDynamicsCompressor();
+  master.gain.value = .9;
+  comp.threshold.value = -12; comp.knee.value = 6; comp.ratio.value = 5; comp.attack.value = .003; comp.release.value = .2;
+  master.connect(comp).connect(c.destination);
+  const bus = gain => { const g = c.createGain(); g.gain.value = gain; g.connect(master); return g; };
+  return { master, vo: bus(MIX.vo), sfx: bus(MIX.sfx), music: bus(MIX.music) };
 }
-function schedule(c, bus, events, t0, from) {
+function schedule(c, buses, events, t0, from) {
   noiseOff = 0;
-  for (const e of events) if (e.t >= from - .02) SFX[e.type](c, bus, t0 + e.t - from, e);
+  for (const e of events) {
+    const out = buses[e.bus || 'sfx'];
+    if (e.type === 'vo') {                          // may start mid-line when resuming
+      const d = Math.min(voDur(e.id), e.max ?? 99);
+      if (e.t + d <= from) continue;
+      const off = Math.max(0, from - e.t);
+      SFX.vo(c, out, t0 + Math.max(0, e.t - from), { ...e, off, max: d });
+    } else if (e.t >= from - .02) {
+      SFX[e.type](c, out, t0 + e.t - from, e);
+    }
+  }
+  const g = buses.music.gain;                       // duck the music under the voice
+  g.setValueAtTime(MIX.music, t0);
+  for (const [a, b] of voWindows(events)) {
+    if (b <= from) continue;
+    g.setTargetAtTime(MIX.duck, t0 + Math.max(0, a - from), .04);
+    g.setTargetAtTime(MIX.music, t0 + (b - from), .18);
+  }
 }
 function toWav(buf) {
   const ch = buf.numberOfChannels, n = buf.length, sr = buf.sampleRate;
@@ -995,7 +1189,8 @@ window.__duration = cutDuration(cutName);
 window.__seek = ct => renderAt(ct);
 window.__renderAudio = async () => {
   const sr = 48000, c = new OfflineAudioContext(2, Math.ceil(sr * cutDuration(cutName)), sr);
-  schedule(c, makeBus(c), cutEvents(cutName), 0, 0);
+  await decodeVO(c);
+  schedule(c, makeBuses(c), cutEvents(cutName), 0, 0);
   const blob = toWav(await c.startRendering());
   return new Promise(res => {
     const fr = new FileReader();
@@ -1015,14 +1210,15 @@ if (RENDER) {
   document.body.classList.add('render');
   renderAt(0);
 } else {
-  const POSTER_T = 21.3;
-  let playing = false, cutT = 0, origin = 0, soundOn = true, actx = null, bus = null, clockAudio = false;
+  const POSTER_T = at('s3', 7.6);
+  let playing = false, cutT = 0, origin = 0, soundOn = true, actx = null, buses = null, clockAudio = false;
   const now = () => clockAudio ? actx.currentTime : performance.now() / 1000;
   const syncChips = () => qa('#cuts button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cut === cutName));
   const setProg = () => { $('prog').firstElementChild.style.width = `${cutT / cutDuration(cutName) * 100}%`; };
+  qa('#cuts button').forEach(b => { b.textContent = `${b.dataset.label} · ${Math.round(cutDuration(b.dataset.cut))}s`; });
 
-  function stopAudio() { if (bus) { bus.disconnect(); bus = null; } }
-  function play() {
+  function stopAudio() { if (buses) { buses.master.disconnect(); buses = null; } }
+  async function play() {
     if (cutT >= cutDuration(cutName) - .01) cutT = 0;
     playing = true;
     document.body.classList.add('playing');
@@ -1031,10 +1227,12 @@ if (RENDER) {
       try {
         actx = actx || new (window.AudioContext || window.webkitAudioContext)();
         actx.resume();
+        await decodeVO(actx);
+        if (!playing) return;
         stopAudio();
-        bus = makeBus(actx);
+        buses = makeBuses(actx);
         const t0 = actx.currentTime + .06;
-        schedule(actx, bus, cutEvents(cutName), t0, cutT);
+        schedule(actx, buses, cutEvents(cutName), t0, cutT);
         origin = t0 - cutT;
         clockAudio = true;
       } catch (err) { clockAudio = false; }

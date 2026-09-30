@@ -2,13 +2,14 @@
 // Renders the ad to a vertical 1080×1920 MP4 (H.264 + AAC).
 //
 // Every frame is a deterministic function of time, so we seek the page to
-// each frame, screenshot it, and pipe the frames to ffmpeg. The soundtrack is
-// synthesized by the page itself via OfflineAudioContext.
+// each frame, screenshot it, and pipe the frames to ffmpeg. The soundtrack
+// (voiceover from vo.js, music bed, effects) is mixed by the page itself via
+// OfflineAudioContext.
 //
-//   node render.mjs                         # full cut  → out/paying-it-back-dad.mp4
-//   node render.mjs --cut 30                # :30 cut   → out/paying-it-back-dad-30.mp4
-//   node render.mjs --cut 15                # :15 cut   → out/paying-it-back-dad-15.mp4
-//   node render.mjs --still 21.3            # one PNG frame (full-cut time) → out/still-21.3.png
+//   node render.mjs                         # full cut   → out/paying-it-back-dad.mp4
+//   node render.mjs --cut short             # ~36s cut   → out/paying-it-back-dad-short.mp4
+//   node render.mjs --cut teaser            # ~17s cut   → out/paying-it-back-dad-teaser.mp4
+//   node render.mjs --still 23.9            # one PNG frame (full-cut time) → out/still-23.9.png
 //   node render.mjs --paidfor "Committee X" # adds a "Paid for by…" end-card disclaimer
 //
 // Needs Playwright (local or global install) and an ffmpeg with libx264
