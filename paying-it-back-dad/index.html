@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paying It Back, Dad</title>
+<meta name="description" content="A satirical ad: a Putin ally bankrolled Don Jr.'s wedding party. Try telling your landlord you're paying it back.">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+:root {
+  --paper: #f2ede3;
+  --ink: #111111;
+  --red: #d42a1e;
+  --gold: #f6d78e;
+  --mute: #8a8a8a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #000; overflow: hidden; }
+body {
+  display: flex; align-items: center; justify-content: center;
+  font-family: Inter, system-ui, sans-serif; color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; }
+
+/* 1080×1920 vertical stage, scaled to fit the viewport */
+#frame { position: relative; width: 1080px; height: 1920px; flex: none; transform-origin: center center; background: #000; }
+#stage { position: absolute; inset: 0; overflow: hidden; background: #000; }
+.scene { position: absolute; inset: 0; display: none; overflow: hidden; }
+.paper { background: var(--paper); }
+.dark  { background: radial-gradient(120% 70% at 50% 38%, #2a2a33 0%, #0c0c10 72%); color: #fff; }
+.black { background: #0a0a0a; color: #fff; }
+.anton { font-family: Anton, Impact, sans-serif; font-weight: 400; text-transform: uppercase; line-height: .92; }
+.kicker { font-weight: 800; font-size: 42px; letter-spacing: .14em; text-transform: uppercase; color: var(--red); }
+.foot { position: absolute; left: 80px; right: 80px; bottom: 96px; font-size: 29px; line-height: 1.35; font-weight: 500; color: #6f6a60; }
+.foot.light { color: #8f8f8f; }
+.center {
+  position: absolute; inset: 0 70px; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; text-align: center;
+}
+.stamp {
+  position: absolute; left: 0; right: 0; margin: 0 auto; width: max-content;
+  font-family: Anton, Impact, sans-serif; text-transform: uppercase; text-align: center;
+  color: var(--red); border: 11px solid var(--red); border-radius: 20px;
+  padding: 18px 38px 12px; line-height: 1; opacity: 0; filter: url(#grunge);
+}
+.stamp.mult { mix-blend-mode: multiply; }
+
+/* ── S1: the wedding reel ─────────────────────────────── */
+#s1 { background: #05071a; }
+#s1-zoom { position: absolute; inset: 0; transform-origin: 50% 62%; }
+#sky { position: absolute; inset: 0; width: 1080px; height: 1920px; }
+.vignette { position: absolute; inset: 0; background: radial-gradient(ellipse 90% 72% at 50% 44%, transparent 55%, rgba(0,0,0,.6) 100%); }
+.post {
+  position: absolute; left: 56px; right: 56px; top: 110px; display: flex; align-items: center; gap: 28px;
+  padding: 26px 30px; border-radius: 30px; color: #fff; opacity: 0;
+  background: rgba(12,10,24,.62); border: 2px solid rgba(255,255,255,.14);
+}
+.avatar { width: 108px; height: 108px; border-radius: 50%; padding: 6px; flex: none; background: conic-gradient(#f6d78e, #ff8fb3, #f6d78e); }
+.avatar span {
+  display: flex; width: 100%; height: 100%; border-radius: 50%; align-items: center; justify-content: center;
+  background: #1b1531; border: 4px solid #0d0b18; font-family: 'Great Vibes', cursive; font-size: 46px; color: var(--gold);
+}
+.post-name { font-weight: 800; font-size: 40px; line-height: 1.15; }
+.post-sub { font-weight: 600; font-size: 39px; color: #d4cde0; margin-top: 8px; min-height: 50px; }
+.post-sub b { color: #fff; background: var(--red); padding: 0 12px 2px; border-radius: 8px; font-weight: 800; }
+.s1-title { position: absolute; left: 0; right: 0; top: 400px; text-align: center; }
+.script {
+  font-family: 'Great Vibes', cursive; font-size: 184px; line-height: 1.1; color: var(--gold);
+  text-shadow: 0 0 34px rgba(246,215,142,.55), 0 4px 18px rgba(0,0,0,.65);
+}
+.s1-loc {
+  font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 600; font-size: 48px;
+  letter-spacing: .2em; color: #f5ead8; margin-top: 4px; text-shadow: 0 2px 14px rgba(0,0,0,.8);
+}
+.s1-cap {
+  position: absolute; left: 50px; right: 50px; top: 1490px; text-align: center; opacity: 0;
+  font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 600; font-size: 96px; line-height: 1.05;
+  color: #fff; text-shadow: 0 3px 22px rgba(0,0,0,.9);
+}
+
+/* ── S2: who paid ─────────────────────────────────────── */
+#s2 .kicker { position: absolute; left: 80px; top: 220px; }
+#s2-name { position: absolute; left: 74px; top: 300px; font-size: 212px; transform-origin: 0 50%; }
+#s2-desc { position: absolute; left: 80px; top: 720px; font-size: 62px; font-weight: 800; }
+.tl { position: absolute; left: 80px; right: 70px; top: 880px; list-style: none; }
+.tl li { position: relative; padding-left: 74px; margin-bottom: 58px; opacity: 0; }
+.tl li::before { content: ''; position: absolute; left: 6px; top: 16px; width: 30px; height: 30px; border-radius: 50%; background: var(--ink); }
+.tl li:not(:last-child)::after { content: ''; position: absolute; left: 19px; top: 56px; bottom: -64px; width: 4px; background: var(--ink); }
+.tl b { display: block; font-family: Anton, Impact, sans-serif; font-weight: 400; font-size: 64px; line-height: 1; color: var(--red); }
+.tl span { display: inline; font-size: 56px; font-weight: 700; line-height: 1.22; }
+.tl .hot span {
+  font-weight: 800; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  background: linear-gradient(transparent 54%, rgba(212,42,30,.38) 54%) no-repeat; background-size: 0% 100%;
+}
+.tl .hot::before { background: var(--red); }
+
+/* ── S3: the bill ─────────────────────────────────────── */
+#s3-title { position: absolute; left: 0; right: 0; top: 140px; text-align: center; font-size: 156px; opacity: 0; }
+#s3-sub { position: absolute; left: 0; right: 0; top: 304px; text-align: center; color: #a9a9b3; font-size: 38px; font-weight: 600; opacity: 0; }
+#s3-wrap { position: absolute; left: 90px; width: 900px; top: 400px; filter: drop-shadow(0 30px 34px rgba(0,0,0,.65)); }
+.receipt {
+  background: #fbf9f2; padding: 54px 50px 74px; color: #1c1c1c;
+  font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 44px; line-height: 1.3;
+  -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 22px) no-repeat,
+                conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 44px 22px repeat-x;
+          mask: linear-gradient(#000 0 0) top / 100% calc(100% - 22px) no-repeat,
+                conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 44px 22px repeat-x;
+}
+.r-line { display: flex; justify-content: space-between; gap: 20px; white-space: nowrap; opacity: 0; }
+.r-line.c { justify-content: center; }
+.r-line.b { font-weight: 700; }
+.r-line.big { justify-content: center; font-weight: 700; font-size: 70px; margin: 4px 0 2px; }
+.r-rule { border-top: 5px dashed #9c9a93; margin: 24px 0; opacity: 0; }
+#s3-stamp { top: 330px; font-family: Oswald, Anton, sans-serif; font-weight: 700; font-size: 176px; padding: 10px 42px 18px; }
+#s3-note { position: absolute; left: 0; right: 0; top: 1500px; text-align: center; font-size: 58px; font-weight: 800; color: #fff; opacity: 0; }
+#s3-note b { color: #ff5a4b; }
+
+/* ── S4: for scale ────────────────────────────────────── */
+#s4 .kicker { position: absolute; left: 80px; top: 170px; }
+.cmp { position: absolute; left: 80px; right: 80px; }
+#s4-a { top: 250px; }
+#s4-b { top: 1010px; }
+.cmp h2 { font-size: 66px; font-weight: 800; line-height: 1.1; margin-bottom: 34px; opacity: 0; }
+.bar-row { margin-bottom: 30px; opacity: 0; }
+.bar-lbl { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; font-size: 38px; font-weight: 700; margin-bottom: 10px; }
+.bar-lbl b { font-family: Anton, Impact, sans-serif; font-weight: 400; font-size: 70px; line-height: 1; }
+.bar { height: 60px; background: rgba(0,0,0,.08); border-radius: 12px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 12px; }
+.bar i.hot { background: var(--red); }
+.bar-row.hot .bar-lbl b { color: var(--red); }
+.punch { font-family: Anton, Impact, sans-serif; text-transform: uppercase; font-size: 88px; line-height: 1; color: var(--red); margin-top: 16px; opacity: 0; transform-origin: 0 50%; }
+
+/* ── S5: the excuse ───────────────────────────────────── */
+.q { position: absolute; left: 80px; right: 80px; }
+#s5-q1 { top: 210px; }
+#s5-q2 { top: 640px; }
+.q-lbl { font-size: 35px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #9d9d9d; line-height: 1.3; margin-bottom: 22px; opacity: 0; }
+.q blockquote { font-size: 92px; font-weight: 800; line-height: 1.08; letter-spacing: -.01em; }
+.q blockquote > span { opacity: 0; }
+.q em { font-style: normal; color: #ff4a3b; }
+#s5-stamp { top: 1250px; font-size: 104px; background: rgba(10,10,10,.6); }
+#s5-stamp small { display: block; font-size: 64px; margin-bottom: 10px; }
+
+/* ── S6: let's all try it ─────────────────────────────── */
+#s6a .l1, #s6a .l2 { font-size: 200px; opacity: 0; }
+#s6a .l2 { color: var(--red); margin-top: 30px; }
+#s6 { background: #e7f1e4; }
+#card { position: absolute; left: 80px; right: 80px; top: 170px; display: flex; flex-direction: column; gap: 26px; }
+#c-top { font-weight: 800; font-size: 40px; letter-spacing: .14em; text-transform: uppercase; color: #58544c; }
+#c-icon { width: 190px; height: 190px; color: var(--ink); }
+#c-icon svg { width: 100%; height: 100%; }
+#c-cat { font-size: 176px; }
+#c-line { font-size: 68px; font-weight: 800; }
+#c-bubble {
+  position: relative; margin-top: 40px; background: #fff; border-radius: 44px; padding: 34px 50px 46px;
+  box-shadow: 0 14px 0 rgba(0,0,0,.1); opacity: 0;
+}
+#c-bubble::after {
+  content: ''; position: absolute; left: 90px; bottom: -46px; width: 0; height: 0;
+  border-left: 30px solid transparent; border-right: 30px solid transparent; border-top: 50px solid #fff;
+}
+#c-bubble small { display: block; font-size: 36px; font-weight: 800; letter-spacing: .12em; color: #8b877d; margin-bottom: 8px; }
+#c-bubble div { font-size: 90px; font-weight: 800; line-height: 1.05; letter-spacing: -.01em; }
+#c-stamp { position: relative; margin-top: 90px; font-size: 128px; }
+#s6b .l1 { font-size: 170px; color: #fff; opacity: 0; }
+#s6b .l2 { font-size: 140px; color: #fff; margin-top: 50px; opacity: 0; }
+#s6b .l2 span { color: #ff4a3b; }
+
+/* ── S7: the close ────────────────────────────────────── */
+#s7a .l1, #s7a .l2 { font-size: 100px; font-weight: 800; line-height: 1.1; letter-spacing: -.01em; opacity: 0; }
+#s7a .l2 { color: #ff4a3b; margin-top: 70px; }
+#s7b { background: #c8211a; color: #fff; }
+#s7b .l1 { font-size: 84px; font-weight: 800; line-height: 1.12; opacity: 0; }
+#s7b .l2 { font-size: 212px; margin-top: 70px; opacity: 0; }
+
+/* ── End card ─────────────────────────────────────────── */
+#end-tag { position: absolute; left: 0; right: 0; top: 330px; text-align: center; font-size: 116px; text-transform: none; opacity: 0; }
+#end-sub { position: absolute; left: 80px; right: 80px; top: 500px; text-align: center; font-size: 56px; font-weight: 800; line-height: 1.15; opacity: 0; }
+#end-real { position: absolute; left: 80px; right: 80px; top: 700px; text-align: center; font-size: 40px; font-weight: 700; line-height: 1.3; color: var(--red); opacity: 0; }
+#end-src { position: absolute; left: 80px; right: 80px; top: 930px; font-size: 33px; font-weight: 500; line-height: 1.45; color: #4e4a43; opacity: 0; }
+#end-src h3 { font-size: 34px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); margin-bottom: 14px; }
+#end-disc {
+  position: absolute; left: 80px; right: 80px; top: 1300px; display: none;
+  border: 5px solid var(--ink); padding: 26px 34px; font-size: 44px; font-weight: 800; line-height: 1.25; text-align: center;
+}
+
+/* ── Transition overlays ──────────────────────────────── */
+#flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+#tears { position: absolute; inset: 0; pointer-events: none; }
+#tears i { position: absolute; left: 0; right: 0; display: none; }
+
+/* ── Player UI (hidden when rendering) ────────────────── */
+#ui { position: fixed; inset: 0; pointer-events: none; }
+#cover {
+  position: absolute; inset: 0; pointer-events: auto; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+  background: rgba(0,0,0,.7); color: #fff; text-align: center; padding: 16px;
+}
+#cover h1 { font-family: Anton, Impact, sans-serif; font-weight: 400; font-size: clamp(34px, 8vw, 56px); text-transform: uppercase; line-height: 1; }
+#play {
+  width: 96px; height: 96px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--red); display: grid; place-items: center; box-shadow: 0 10px 30px rgba(0,0,0,.5);
+}
+#play svg { width: 38px; height: 38px; margin-left: 6px; fill: #fff; }
+.chips { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.chips button {
+  border: 2px solid rgba(255,255,255,.5); background: rgba(0,0,0,.35); color: #fff;
+  border-radius: 999px; padding: 8px 16px; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.chips button[aria-pressed="true"] { background: #fff; color: #111; border-color: #fff; }
+#prog { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.15); }
+#prog i { display: block; height: 100%; width: 0; background: var(--red); }
+body.playing #cover { display: none; }
+body.render #ui { display: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="grunge" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -3.4 2.6" result="speck"/>
+    <feComposite in="SourceGraphic" in2="speck" operator="in"/>
+  </filter>
+</svg>
+
+<div id="frame">
+<div id="stage">
+
+  <!-- S1 — the wedding reel -->
+  <section class="scene" id="s1">
+    <div id="s1-zoom">
+      <canvas id="sky" width="1080" height="1920"></canvas>
+      <div class="vignette"></div>
+    </div>
+    <div class="post" id="s1-post">
+      <div class="avatar"><span>D&amp;B</span></div>
+      <div>
+        <div class="post-name">Don &amp; Bettina's Wedding Weekend</div>
+        <div class="post-sub">Sponsored by <b id="s1-sponsor" data-type>a Putin ally</b></div>
+      </div>
+    </div>
+    <div class="s1-title">
+      <div class="script" id="s1-names">Don &amp; Bettina</div>
+      <div class="s1-loc" id="s1-loc">The Bahamas · May 2026</div>
+    </div>
+    <div class="s1-cap" id="s1-cap0">A private island.</div>
+    <div class="s1-cap" id="s1-cap1">Fireworks over the water.</div>
+    <div class="s1-cap" id="s1-cap2">Two nights of parties.</div>
+  </section>
+
+  <!-- S2 — who paid -->
+  <section class="scene paper" id="s2">
+    <div class="kicker" id="s2-k">So who paid for it?</div>
+    <h1 class="anton" id="s2-name">Umar<br>Kremlev</h1>
+    <div id="s2-desc">Russian oligarch. Putin ally.</div>
+    <ol class="tl">
+      <li id="s2-t0"><b>Apr 22</b><span>Putin awards him Russia's Order of Friendship.</span></li>
+      <li id="s2-t1"><b>May 19–20</b><span>He's in Putin's delegation to China.</span></li>
+      <li id="s2-t2" class="hot"><b>Days later</b><span>He bankrolls Don Jr.'s wedding weekend.</span></li>
+    </ol>
+  </section>
+
+  <!-- S3 — the bill -->
+  <section class="scene dark" id="s3">
+    <h1 class="anton" id="s3-title">The Bill</h1>
+    <div id="s3-sub">As reported by ProPublica</div>
+    <div id="s3-wrap">
+      <div class="receipt">
+        <div class="r-line c b">WEDDING WEEKEND</div>
+        <div class="r-line c">THE BAHAMAS · MAY 2026</div>
+        <div class="r-rule"></div>
+        <div class="r-line"><span>PRIVATE ISLAND</span><span>$100,000/NIGHT</span></div>
+        <div class="r-line"><span>FIREWORKS SHOW</span><span>~$70,000</span></div>
+        <div class="r-line"><span>SAILOR-SUIT DANCERS</span><span>YES</span></div>
+        <div class="r-line"><span>PAID VIA</span><span>DUBAI ENTITY</span></div>
+        <div class="r-rule"></div>
+        <div class="r-line"><span>BILLED TO:</span></div>
+        <div class="r-line big">A PUTIN ALLY</div>
+        <div class="r-rule"></div>
+        <div class="r-line c">СПАСИБО! COME AGAIN</div>
+      </div>
+      <div class="stamp mult" id="s3-stamp">ОПЛАЧЕНО</div>
+    </div>
+    <div id="s3-note">(That's Russian for <b>“PAID.”</b>)</div>
+  </section>
+
+  <!-- S4 — for scale -->
+  <section class="scene paper" id="s4">
+    <div class="kicker" id="s4-k">For scale</div>
+    <div class="cmp" id="s4-a">
+      <h2>One night on that island…</h2>
+      <div class="bar-row hot"><div class="bar-lbl"><span>Island rental, 1 night</span><b data-v="100000" data-pre="$">$0</b></div><div class="bar"><i class="hot"></i></div></div>
+      <div class="bar-row"><div class="bar-lbl"><span>Median U.S. household, 1 year</span><b data-v="87460" data-pre="$">$0</b></div><div class="bar"><i></i></div></div>
+      <div class="punch">Their one night &gt; your whole year.</div>
+    </div>
+    <div class="cmp" id="s4-b">
+      <h2>The fireworks alone…</h2>
+      <div class="bar-row hot"><div class="bar-lbl"><span>Fireworks show</span><b data-v="70000" data-pre="~$">~$0</b></div><div class="bar"><i class="hot"></i></div></div>
+      <div class="bar-row"><div class="bar-lbl"><span>Two average U.S. weddings</span><b data-v="68400" data-pre="$">$0</b></div><div class="bar"><i></i></div></div>
+      <div class="punch">Two of your weddings. Up in smoke.</div>
+    </div>
+    <div class="foot" id="s4-foot">U.S. Census Bureau: 2025 median household income, $87,460. The Knot 2026 Real Weddings Study: average wedding, $34,200. Island and fireworks prices per ProPublica.</div>
+  </section>
+
+  <!-- S5 — the excuse -->
+  <section class="scene black" id="s5">
+    <div class="q" id="s5-q1">
+      <div class="q-lbl">Don Jr.'s spokesperson, to ProPublica:</div>
+      <blockquote><span>“Umar is a personal friend of Don.”</span></blockquote>
+    </div>
+    <div class="q" id="s5-q2">
+      <div class="q-lbl">Asked if Don Jr. paid back the Putin ally who bankrolled his wedding party, President Trump said:</div>
+      <blockquote><span>“He said, </span><span>‘No, I’m paying it back, <em>Dad</em>.’”</span></blockquote>
+    </div>
+    <div class="stamp" id="s5-stamp"><small>Proof of repayment:</small>None provided</div>
+    <div class="foot light" id="s5-foot">Asked for evidence of repayment, the White House and the Trump Organization provided none. (ABC News, Sept. 2026)</div>
+  </section>
+
+  <!-- S6 — let's all try it -->
+  <section class="scene paper" id="s6a">
+    <div class="center"><div class="anton l1">Great excuse.</div><div class="anton l2">Let's all try it.</div></div>
+  </section>
+  <section class="scene" id="s6">
+    <div id="card">
+      <div id="c-top"></div>
+      <div id="c-icon"></div>
+      <div class="anton" id="c-cat"></div>
+      <div id="c-line"></div>
+      <div id="c-bubble"><small>YOU:</small><div>“I’m paying it back, Dad.”</div></div>
+      <div class="stamp mult" id="c-stamp"></div>
+    </div>
+  </section>
+  <section class="scene black" id="s6b">
+    <div class="center"><div class="anton l1">Weird.</div><div class="anton l2">It only works when <span>Dad's the President.</span></div></div>
+  </section>
+
+  <!-- S7 — the close -->
+  <section class="scene black" id="s7a">
+    <div class="center"><div class="l1">In America, that's called a gift.</div><div class="l2">In Moscow, it's called an investment.</div></div>
+  </section>
+  <section class="scene" id="s7b">
+    <div class="center"><div class="l1">A Putin ally picked up their tab.</div><div class="anton l2">Who's picking up yours?</div></div>
+  </section>
+
+  <!-- End card -->
+  <section class="scene paper" id="end">
+    <div class="anton" id="end-tag">#PayingItBackDad</div>
+    <div id="end-sub">Send this to someone who pays full price for everything.</div>
+    <div id="end-real">Satire. But every quote and dollar figure about the wedding is real.</div>
+    <div id="end-src">
+      <h3>Sources</h3>
+      ProPublica, “Donald Trump Jr.’s Bahamas Wedding Was Secretly Bankrolled by…,” Sept. 14, 2026<br>
+      ABC News · NBC News · CNN · Time, Sept. 2026<br>
+      U.S. Census Bureau, Income in the United States: 2025<br>
+      The Knot 2026 Real Weddings Study
+    </div>
+    <div id="end-disc"></div>
+  </section>
+
+  <div id="tears"><i></i><i></i><i></i><i></i><i></i></div>
+  <div id="flash"></div>
+</div>
+</div>
+
+<div id="ui">
+  <div id="cover">
+    <h1 id="cover-title">Paying It Back, Dad</h1>
+    <button id="play" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l16 9-16 9z"/></svg></button>
+    <div class="chips" id="cuts">
+      <button data-cut="full">Full · 64s</button>
+      <button data-cut="30">:30 cut</button>
+      <button data-cut="15">:15 cut</button>
+    </div>
+    <div class="chips"><button id="snd" aria-pressed="true">Sound on</button></div>
+  </div>
+  <div id="prog"><i></i></div>
+</div>
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════════════════════════
+   Timeline. Everything on screen and every sound is a pure function of
+   master time t (seconds), so the page can play live or be rendered
+   frame-by-frame (render.mjs) with identical results.
+   ════════════════════════════════════════════════════════════════════ */
+
+const W = 1080, H = 1920, HZ = 1380;            // stage size, horizon line
+const END = 64;
+const SC = {                                     // scene windows, master seconds
+  s1: [0, 8], s2: [8, 15.3], s3: [15.3, 22.8], s4: [22.8, 30.3], s5: [30.3, 38.8],
+  s6a: [38.8, 40.6], s6: [40.6, 49.8], s6b: [49.8, 52.8],
+  s7a: [52.8, 56.2], s7b: [56.2, 59.8], end: [59.8, END],
+};
+const CARD_T0 = 40.6, CARD_LEN = 2.3;
+
+const params = new URLSearchParams(location.search);
+const RENDER = params.has('render');
+const PAID_FOR = (params.get('paidfor') || '').trim();
+const CUT_END = PAID_FOR ? END : 62.4;           // a disclaimer needs its full 4s on screen
+const CUTS = {                                    // cutdowns = spans of the master timeline
+  full: [[0, END]],
+  '30': [[0, 4.5], [15.3, 21.8], [32.7, 45.2], [49.8, 52.8], [56.2, CUT_END]],
+  '15': [[32.7, 38.8], [40.6, 45.2], [49.8, 52.8], [59.8, CUT_END]],
+};
+let cutName = CUTS[params.get('cut')] ? params.get('cut') : 'full';
+
+const cutDuration = name => CUTS[name].reduce((s, [a, b]) => s + b - a, 0);
+function cutToMaster(name, ct) {
+  let acc = 0;
+  const segs = CUTS[name];
+  for (const [a, b] of segs) {
+    if (ct < acc + (b - a)) return a + Math.max(0, ct - acc);
+    acc += b - a;
+  }
+  return segs[segs.length - 1][1] - 1e-4;
+}
+function cutJoins(name) {                          // cut-time positions of hard joins
+  const out = [];
+  let acc = 0;
+  for (const [a, b] of CUTS[name]) { if (acc > 0) out.push(acc); acc += b - a; }
+  return out;
+}
+
+/* ── helpers ───────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const prog = (t, at, d) => clamp((t - at) / d);
+const outC = x => 1 - Math.pow(1 - x, 3);
+function rng(seed) {                               // mulberry32
+  return () => {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let r = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    r = r + Math.imul(r ^ r >>> 7, 61 | r) ^ r;
+    return ((r ^ r >>> 14) >>> 0) / 4294967296;
+  };
+}
+function fadeUp(el, t, at, { d = .4, dy = 44, dx = 0 } = {}) {
+  const p = prog(t, at, d), e = outC(p);
+  el.style.opacity = p;
+  el.style.transform = `translate(${(1 - e) * dx}px, ${(1 - e) * dy}px)`;
+}
+function slam(el, t, at, { d = .2, s = 1.35, rot = 0, op = 1 } = {}) {
+  const p = prog(t, at, d);
+  el.style.opacity = clamp(p * 3) * op;
+  el.style.transform = `rotate(${rot}deg) scale(${1 + (s - 1) * (1 - outC(p))})`;
+}
+function typeOn(el, t, at, cps) {
+  const full = el.dataset.full;
+  const n = Math.floor(clamp((t - at) * cps, 0, full.length));
+  if (el.textContent.length !== n) el.textContent = full.slice(0, n);
+  el.style.visibility = n ? 'visible' : 'hidden';
+}
+document.querySelectorAll('[data-type]').forEach(el => { el.dataset.full = el.textContent; });
+
+/* ── S1 sky: stars, island, fireworks (deterministic) ──── */
+const mkCanvas = (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h });
+const sky = $('sky'), sctx = sky.getContext('2d');
+const fw = mkCanvas(W, HZ), fctx = fw.getContext('2d');
+
+const BG = (() => {
+  const c = mkCanvas(W, H), g = c.getContext('2d');
+  const s = g.createLinearGradient(0, 0, 0, HZ);
+  s.addColorStop(0, '#04061a'); s.addColorStop(.45, '#131236'); s.addColorStop(.82, '#3b1d52'); s.addColorStop(1, '#7c3662');
+  g.fillStyle = s; g.fillRect(0, 0, W, HZ);
+  const hz = g.createLinearGradient(0, HZ - 280, 0, HZ);
+  hz.addColorStop(0, 'rgba(255,150,175,0)'); hz.addColorStop(1, 'rgba(255,150,175,.25)');
+  g.fillStyle = hz; g.fillRect(0, HZ - 280, W, 280);
+  const sea = g.createLinearGradient(0, HZ, 0, H);
+  sea.addColorStop(0, '#2c1a45'); sea.addColorStop(.14, '#121535'); sea.addColorStop(1, '#03040b');
+  g.fillStyle = sea; g.fillRect(0, HZ, W, H - HZ);
+  return c;
+})();
+
+function palm(g, x, y, h, lean) {
+  const tx = x + lean, ty = y - h;
+  g.lineWidth = 12; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + lean * .15, y - h * .6, tx, ty); g.stroke();
+  // fronds: [direction°, length, droop] — long, narrow, arching then hanging
+  for (const [deg, L, droop] of [[-172, 175, 120], [-150, 165, 70], [-118, 125, 18], [-70, 120, 22],
+                                 [-32, 165, 72], [-6, 180, 125], [160, 120, 140], [25, 115, 140]]) {
+    const a = deg * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+    const ex = tx + ca * L, ey = ty + sa * L * .6 + droop;
+    const cx = tx + ca * L * .55, cy = ty + sa * L * .55 - 38;
+    const nx = -sa * 9, ny = ca * 9;               // half-width of the frond at its middle
+    g.beginPath(); g.moveTo(tx, ty);
+    g.quadraticCurveTo(cx + nx, cy + ny, ex, ey);
+    g.quadraticCurveTo(cx - nx, cy - ny + 10, tx, ty + 6);
+    g.fill();
+  }
+  g.beginPath(); g.arc(tx, ty + 4, 10, 0, 7); g.fill();
+}
+const ISLAND = (() => {
+  const c = mkCanvas(W, H), g = c.getContext('2d');
+  g.fillStyle = g.strokeStyle = '#05060c';
+  g.beginPath(); g.moveTo(420, HZ + 2);
+  g.bezierCurveTo(560, HZ - 42, 640, HZ - 80, 780, HZ - 86);
+  g.bezierCurveTo(900, HZ - 92, 1010, HZ - 62, 1120, HZ - 42);
+  g.lineTo(1120, HZ + 2); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(-20, HZ + 2); g.bezierCurveTo(40, HZ - 28, 150, HZ - 36, 240, HZ + 2); g.closePath(); g.fill();
+  g.fillRect(800, HZ - 156, 120, 80);
+  g.beginPath(); g.moveTo(780, HZ - 154); g.lineTo(860, HZ - 206); g.lineTo(940, HZ - 154); g.closePath(); g.fill();
+  palm(g, 640, HZ - 66, 190, -42); palm(g, 735, HZ - 82, 245, 24); palm(g, 985, HZ - 70, 210, 30); palm(g, 115, HZ - 24, 150, -22);
+  return c;
+})();
+
+const STARS = (() => {
+  const r = rng(11);
+  return Array.from({ length: 150 }, () => ({ x: r() * W, y: r() * (HZ - 200), s: .8 + r() * 2.2, a: .25 + r() * .7, p: r() * 6.3 }));
+})();
+const LIGHTS = Array.from({ length: 19 }, (_, i) => {
+  const u = i / 18, x = 560 + u * 460;
+  return { x, y: HZ - 118 - 26 * Math.sin(u * Math.PI) + 34 * Math.pow(Math.sin(u * Math.PI * 2), 2), p: i * 1.7 };
+});
+
+const BURSTS = (() => {
+  const r = rng(20260523);
+  const pals = ['255,214,140', '255,168,200', '255,246,230', '255,226,170', '255,128,168'];
+  const times = [.15, .75, 1.35, 1.9, 2.55, 3.1, 3.7, 4.3, 4.85, 5.4, 5.95, 6.4, 6.75, 7.1, 7.4];
+  return times.map((t0, i) => {
+    const b = {
+      t0, x: 150 + r() * 780, y: 330 + r() * 560, rx: (r() - .5) * 90,
+      life: 1.7 + r() * .6, col: pals[i % 5], col2: pals[(i + 2) % 5],
+    };
+    const n = 72 + Math.floor(r() * 40), sp = 360 + r() * 220, rr = rng(1000 + i);
+    b.parts = Array.from({ length: n }, (_, k) => {
+      const a = k / n * Math.PI * 2 + (rr() - .5) * .14, s = sp * (.72 + rr() * .32);
+      return { vx: Math.cos(a) * s, vy: Math.sin(a) * s, tw: rr() * 6.3, c: rr() < .25 ? b.col2 : b.col };
+    });
+    return b;
+  });
+})();
+
+function drawFireworks(g, t) {
+  g.clearRect(0, 0, W, HZ);
+  g.globalCompositeOperation = 'lighter';
+  g.lineCap = 'round';
+  const K = 1.9, G = 150, fall = d => (1 - Math.exp(-K * d)) / K;
+  for (const b of BURSTS) {
+    const dt = t - b.t0;
+    if (dt < -.6 || dt > b.life) continue;
+    if (dt < 0) {                                  // rising rocket
+      const p = 1 + dt / .6;
+      for (let k = 0; k < 9; k++) {
+        const pk = Math.max(0, p - k * .022), e = 1 - (1 - pk) * (1 - pk);
+        g.fillStyle = `rgba(255,222,176,${(1 - k / 9) * .85})`;
+        g.beginPath(); g.arc(b.x + b.rx * (1 - e), HZ - (HZ - b.y) * e, 3.4 - k * .3, 0, 7); g.fill();
+      }
+      continue;
+    }
+    const lp = dt / b.life;
+    if (dt < .3) {                                 // burst flash
+      const rad = 70 + dt * 700, a = .45 * (1 - dt / .3);
+      const gr = g.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad);
+      gr.addColorStop(0, `rgba(${b.col},${a})`); gr.addColorStop(1, `rgba(${b.col},0)`);
+      g.fillStyle = gr; g.fillRect(b.x - rad, b.y - rad, rad * 2, rad * 2);
+    }
+    const d0 = Math.max(0, dt - .09), f1 = fall(dt), f0 = fall(d0), s1 = .5 * G * dt * dt, s0 = .5 * G * d0 * d0;
+    const base = Math.pow(1 - lp, 1.3);
+    g.lineWidth = 3.6 * (1 - lp * .6);
+    for (const q of b.parts) {
+      let a = base;
+      if (lp > .45) a *= .5 + .5 * Math.sin(q.tw + dt * 38);
+      if (a < .02) continue;
+      g.strokeStyle = `rgba(${q.c},${a})`;
+      g.beginPath();
+      g.moveTo(b.x + q.vx * f0, b.y + q.vy * f0 + s0);
+      g.lineTo(b.x + q.vx * f1, b.y + q.vy * f1 + s1);
+      g.stroke();
+    }
+  }
+  g.globalCompositeOperation = 'source-over';
+}
+
+function drawSky(t) {
+  const g = sctx;
+  g.drawImage(BG, 0, 0);
+  for (const s of STARS) {
+    g.fillStyle = `rgba(255,248,235,${s.a * (.55 + .45 * Math.sin(t * 2.3 + s.p))})`;
+    g.fillRect(s.x, s.y, s.s, s.s);
+  }
+  drawFireworks(fctx, t);
+  g.globalCompositeOperation = 'lighter';
+  g.drawImage(fw, 0, 0);
+  g.save(); g.globalAlpha = .34; g.translate(0, HZ); g.scale(1, -.42); g.drawImage(fw, 0, -HZ); g.restore();
+  g.globalCompositeOperation = 'source-over';
+  g.fillStyle = 'rgba(6,8,24,.6)';                 // water ripples break up the reflection
+  for (let i = 0, y = HZ + 6; y < H; i++) {
+    const h = 2 + i * .22;
+    g.fillRect(0, y + Math.sin(t * 1.6 + i) * 2, W, h);
+    y += 10 + i * 1.4;
+  }
+  g.drawImage(ISLAND, 0, 0);
+  g.globalCompositeOperation = 'lighter';
+  for (const L of LIGHTS) {
+    const a = .55 + .45 * Math.sin(t * 3 + L.p);
+    const gr = g.createRadialGradient(L.x, L.y, 0, L.x, L.y, 26);
+    gr.addColorStop(0, `rgba(255,205,130,${.9 * a})`); gr.addColorStop(1, 'rgba(255,205,130,0)');
+    g.fillStyle = gr; g.fillRect(L.x - 26, L.y - 26, 52, 52);
+  }
+  g.fillStyle = 'rgba(255,196,120,.9)';
+  for (const x of [818, 852, 886]) g.fillRect(x, HZ - 136, 18, 30);
+  g.globalCompositeOperation = 'source-over';
+}
+
+/* ── S6 card data ──────────────────────────────────────── */
+const SVG = p => `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const CARDS = [
+  { cat: 'Groceries', line: 'Total: $214.87', stamp: 'Declined', bg: '#e6f0e2',
+    icon: SVG('<path d="M6 16h14l12 48h46l10-34H26"/><circle cx="40" cy="81" r="6" fill="currentColor"/><circle cx="72" cy="81" r="6" fill="currentColor"/>') },
+  { cat: 'Rent', line: 'Past due: $1,850', stamp: 'Eviction notice', bg: '#ebe5f4',
+    icon: SVG('<path d="M10 48L50 14l40 34"/><path d="M22 40v46h56V40"/><path d="M42 86V62h16v24"/>') },
+  { cat: 'Car insurance', line: 'Renewal: $1,340. Up again.', stamp: 'Policy canceled', bg: '#f8e8d8',
+    icon: SVG('<path d="M10 66V52l12-20h56l12 20v14z"/><circle cx="30" cy="68" r="9" fill="currentColor"/><circle cx="70" cy="68" r="9" fill="currentColor"/>') },
+  { cat: 'The IRS', line: 'Balance due: $3,212', stamp: 'Audited', bg: '#e1eaf5',
+    icon: SVG('<path d="M8 36L50 12l42 24z"/><path d="M20 44v34M40 44v34M60 44v34M80 44v34"/><path d="M8 88h84"/>') },
+];
+let shownCard = -1;
+function setCard(i) {
+  if (i === shownCard) return;
+  shownCard = i;
+  const c = CARDS[i];
+  $('s6').style.background = c.bg;
+  $('c-top').textContent = `Attempt #${i + 1}`;
+  $('c-icon').innerHTML = c.icon;
+  $('c-cat').textContent = c.cat;
+  $('c-line').textContent = c.line;
+  $('c-stamp').textContent = c.stamp;
+}
+
+/* ── scene updaters (master t) ─────────────────────────── */
+const qa = sel => Array.from(document.querySelectorAll(sel));
+const R_LINES = qa('#s3 .receipt > div');
+const R_TIMES = [16.0, 16.15, 16.3, 16.55, 17.05, 17.55, 18.05, 18.45, 18.6, 18.9, 19.45, 19.6];
+const BARS = qa('#s4 .bar-row');
+const BAR_TIMES = [23.35, 23.6, 26.5, 26.75];
+
+const UPD = {
+  s1(t) {
+    drawSky(t);
+    $('s1-zoom').style.transform = `scale(${1 + .06 * t / 8})`;
+    const pn = prog(t, .2, 1);
+    $('s1-names').style.opacity = pn;
+    $('s1-names').style.filter = `blur(${(1 - pn) * 14}px)`;
+    fadeUp($('s1-loc'), t, .7, { d: .6, dy: 20 });
+    fadeUp($('s1-post'), t, .9, { d: .45, dy: -40 });
+    typeOn($('s1-sponsor'), t, 1.35, 22);
+    [[2.8, 4.6], [4.6, 6.3], [6.3, 8]].forEach(([a, b], i) => {
+      const el = $('s1-cap' + i), pin = prog(t, a, .35), pout = prog(t, b - .2, .2);
+      el.style.opacity = pin * (1 - pout);
+      el.style.filter = `blur(${(1 - pin) * 10}px)`;
+      el.style.transform = `translateY(${(1 - outC(pin)) * 20}px)`;
+    });
+  },
+  s2(t) {
+    fadeUp($('s2-k'), t, 8.3, { d: .3, dy: 20 });
+    slam($('s2-name'), t, 8.5, { d: .22, s: 1.3 });
+    fadeUp($('s2-desc'), t, 9.2, { d: .35 });
+    [10.1, 11.4, 12.7].forEach((at, i) => fadeUp($('s2-t' + i), t, at, { d: .35, dy: 0, dx: -60 }));
+    qa('#s2-t2 span')[0].style.backgroundSize = `${outC(prog(t, 13.05, .6)) * 100}% 100%`;
+  },
+  s3(t) {
+    fadeUp($('s3-title'), t, 15.4, { d: .3, dy: -30 });
+    fadeUp($('s3-sub'), t, 15.6, { d: .3, dy: 0 });
+    const e = outC(prog(t, 15.5, .5));
+    $('s3-wrap').style.transform = `translateY(${(1 - e) * 700}px)`;
+    R_LINES.forEach((el, i) => { el.style.opacity = t >= R_TIMES[i] ? 1 : 0; });
+    slam($('s3-stamp'), t, 20.1, { d: .18, s: 2.3, rot: -13, op: .92 });
+    fadeUp($('s3-note'), t, 20.7, { d: .3, dy: 24 });
+  },
+  s4(t) {
+    fadeUp($('s4-k'), t, 22.9, { d: .3, dy: 16 });
+    fadeUp(qa('#s4-a h2')[0], t, 23.0, { d: .35 });
+    fadeUp(qa('#s4-b h2')[0], t, 26.2, { d: .35 });
+    BARS.forEach((row, i) => {
+      const at = BAR_TIMES[i];
+      row.style.opacity = prog(t, at - .1, .15);
+      const e = outC(prog(t, at, .9));
+      const b = row.querySelector('b'), v = +b.dataset.v;
+      row.querySelector('i').style.width = `${v / 1000 * e}%`;
+      b.textContent = b.dataset.pre + Math.round(v * e).toLocaleString('en-US');
+    });
+    const [pa, pb] = qa('#s4 .punch');
+    slam(pa, t, 24.75, { d: .2, s: 1.25 });
+    slam(pb, t, 27.85, { d: .2, s: 1.25 });
+    $('s4-foot').style.opacity = prog(t, 23.2, .4);
+  },
+  s5(t) {
+    const [l1, l2] = qa('#s5 .q-lbl'), [q1] = qa('#s5-q1 blockquote > span'), [q2a, q2b] = qa('#s5-q2 blockquote > span');
+    fadeUp(l1, t, 30.45, { d: .3, dy: 12 });
+    fadeUp(q1, t, 30.65, { d: .4, dy: 30 });
+    fadeUp(l2, t, 32.8, { d: .3, dy: 12 });
+    fadeUp(q2a, t, 33.5, { d: .3, dy: 20 });
+    fadeUp(q2b, t, 34.15, { d: .35, dy: 30 });
+    slam($('s5-stamp'), t, 35.9, { d: .18, s: 2.2, rot: -6 });
+    $('s5-foot').style.opacity = prog(t, 36.3, .4);
+  },
+  s6a(t) {
+    const [a, b] = qa('#s6a .anton');
+    slam(a, t, 38.85, { d: .18, s: 1.4 });
+    slam(b, t, 39.45, { d: .18, s: 1.4 });
+  },
+  s6(t) {
+    const i = clamp(Math.floor((t - CARD_T0) / CARD_LEN), 0, CARDS.length - 1);
+    setCard(i);
+    const at = CARD_T0 + i * CARD_LEN;
+    fadeUp($('card'), t, at, { d: .22, dy: 0, dx: 260 });
+    fadeUp($('c-bubble'), t, at + .45, { d: .25, dy: 40 });
+    slam($('c-stamp'), t, at + 1.1, { d: .16, s: 2.4, rot: -9, op: .95 });
+  },
+  s6b(t) {
+    const [a, b] = qa('#s6b .anton');
+    fadeUp(a, t, 49.9, { d: .3, dy: 20 });
+    slam(b, t, 50.55, { d: .2, s: 1.3 });
+  },
+  s7a(t) {
+    const [a, b] = qa('#s7a .center > div');
+    fadeUp(a, t, 52.95, { d: .45, dy: 30 });
+    slam(b, t, 54.05, { d: .22, s: 1.2 });
+  },
+  s7b(t) {
+    const [a, b] = qa('#s7b .center > div');
+    fadeUp(a, t, 56.3, { d: .4, dy: 30 });
+    slam(b, t, 57.35, { d: .22, s: 1.35 });
+  },
+  end(t) {
+    slam($('end-tag'), t, 59.9, { d: .22, s: 1.3 });
+    fadeUp($('end-sub'), t, 60.25, { d: .35, dy: 24 });
+    fadeUp($('end-real'), t, 60.5, { d: .35, dy: 24 });
+    fadeUp($('end-src'), t, 60.7, { d: .4, dy: 24 });
+  },
+};
+
+const IMPACTS = [8.5, 20.1, 35.9, 38.85, 39.45, 50.55, 54.05, 57.35, 59.9,
+  ...CARDS.map((_, i) => CARD_T0 + i * CARD_LEN + 1.1)];
+const TEARS = qa('#tears i');
+const scenes = Object.fromEntries(Object.keys(SC).map(k => [k, $(k)]));
+const stage = $('stage'), flashEl = $('flash');
+
+function renderMaster(t, cutT = -1, joins = []) {
+  for (const k in SC) {
+    const [a, b] = SC[k], on = t >= a && t < b;
+    scenes[k].style.display = on ? 'block' : 'none';
+    if (on) UPD[k](t);
+  }
+  let tx = 0, ty = 0, sc = 1, filt = 'none', flash = 0;
+  for (const ti of IMPACTS) {
+    const d = t - ti;
+    if (d >= 0 && d < .35) {
+      const k = Math.exp(-d * 13);
+      tx += Math.sin(d * 95) * 20 * k; ty += Math.cos(d * 83) * 14 * k; sc = 1.03;
+    }
+  }
+  const gd = t - SC.s2[0];                          // the record-scratch glitch into S2
+  const glitch = gd >= 0 && gd < .35;
+  if (glitch) {
+    const f = Math.floor(gd * 30), r = rng(f + 99);
+    tx += (r() - .5) * 90; sc = 1.04;
+    if (f < 2) filt = 'invert(1) contrast(1.4)';
+    flash = f < 4 ? .55 - f * .12 : 0;
+  }
+  TEARS.forEach((el, i) => {
+    if (!glitch || gd > .22) { el.style.display = 'none'; return; }
+    const r = rng(Math.floor(gd * 30) * 7 + i);
+    Object.assign(el.style, {
+      display: 'block', top: `${r() * H}px`, height: `${10 + r() * 90}px`,
+      background: r() < .5 ? '#111' : '#f2ede3', transform: `translateX(${(r() - .5) * 200}px)`,
+    });
+  });
+  for (const j of joins) {
+    const d = cutT - j;
+    if (d >= 0 && d < .16) flash = Math.max(flash, .7 * (1 - d / .16));
+  }
+  stage.style.transform = `translate(${tx}px, ${ty}px) scale(${sc})`;
+  stage.style.filter = filt;
+  flashEl.style.opacity = flash;
+}
+const renderAt = ct => renderMaster(cutToMaster(cutName, ct), ct, cutJoins(cutName));
+
+/* ════════════════════════════════════════════════════════════════════
+   Sound: synthesized with WebAudio (no audio files). The same event list
+   plays live or renders offline to WAV for the MP4.
+   ════════════════════════════════════════════════════════════════════ */
+
+const NOTE = { F4: 349.23, G4: 392, A4: 440, B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880, C6: 1046.5 };
+function masterEvents() {
+  const ev = [];
+  const chords = [['C5', 'E5', 'G5', 'C6'], ['A4', 'C5', 'E5', 'A5'], ['F4', 'A4', 'C5', 'F5'], ['G4', 'B4', 'D5', 'G5']];
+  const pattern = [0, 1, 2, 3, 2, 1, 2, 1];
+  chords.forEach((ch, ci) => {
+    pattern.forEach((n, k) => ev.push({ t: ci * 2 + k * .25, type: 'note', f: NOTE[ch[n]], clip: SC.s1[1] }));
+    ev.push({ t: ci * 2, type: 'bass', f: NOTE[ch[0]] / 4, dur: 2, clip: SC.s1[1] });
+  });
+  for (const b of BURSTS) {
+    if (b.t0 - .6 >= 0) ev.push({ t: b.t0 - .6, type: 'whistle', clip: SC.s1[1] });
+    ev.push({ t: b.t0, type: 'pop', vol: .22 + (b.t0 * 7 % 3) * .05, clip: SC.s1[1] + .4 });
+  }
+  ev.push({ t: 8.0, type: 'scratch' }, { t: 8.5, type: 'thud' });
+  [10.1, 11.4, 12.7].forEach(t => ev.push({ t, type: 'tick' }));
+  ev.push({ t: 15.5, type: 'whoosh', dur: .45 });
+  R_TIMES.forEach((t, i) => ev.push({ t, type: 'print', dur: [3, 4, 8, 11].includes(i) ? .1 : .24 }));
+  ev.push({ t: 20.1, type: 'stamp' });
+  ev.push({ t: 23.35, type: 'riser' }, { t: 26.5, type: 'riser' }, { t: 24.75, type: 'hit' }, { t: 27.85, type: 'hit' });
+  ev.push({ t: 30.45, type: 'tick' }, { t: 32.8, type: 'tick' }, { t: 35.9, type: 'stamp' });
+  ev.push({ t: 38.85, type: 'hit' }, { t: 39.45, type: 'hit' });
+  CARDS.forEach((_, i) => {
+    const at = CARD_T0 + i * CARD_LEN;
+    ev.push({ t: at, type: 'whoosh', dur: .25 }, { t: at + .45, type: 'tick' }, { t: at + 1.1, type: 'stamp' });
+    if (i === 0) ev.push({ t: at + 1.1, type: 'buzz' });
+  });
+  ev.push({ t: 49.9, type: 'tick' }, { t: 50.55, type: 'hit' }, { t: 54.05, type: 'boom' }, { t: 57.35, type: 'boom' });
+  ['C5', 'E5', 'G5', 'C6'].forEach((n, k) => ev.push({ t: 59.9 + k * .09, type: 'note', f: NOTE[n], dur: 3.2, vol: .14 }));
+  ev.push({ t: 59.9, type: 'bass', f: NOTE.C5 / 4, dur: 3.5 });
+  return ev;
+}
+function cutEvents(name) {
+  const all = masterEvents(), out = [];
+  let acc = 0;
+  for (const [a, b] of CUTS[name]) {
+    for (const e of all) {
+      if (e.t < a || e.t >= b) continue;
+      const lim = Math.min(e.clip ?? Infinity, name === 'full' ? Infinity : b) - e.t;
+      out.push({ ...e, t: acc + e.t - a, max: lim });
+    }
+    if (acc > 0) out.push({ t: acc, type: 'whoosh', dur: .2, vol: .18 });
+    acc += b - a;
+  }
+  return out;
+}
+
+const noiseBufs = new WeakMap();
+let noiseOff = 0;
+function noise(c, t, dur) {
+  let buf = noiseBufs.get(c);
+  if (!buf) {
+    buf = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
+    const d = buf.getChannelData(0), r = rng(5);
+    for (let i = 0; i < d.length; i++) d[i] = r() * 2 - 1;
+    noiseBufs.set(c, buf);
+  }
+  const s = c.createBufferSource();
+  s.buffer = buf; s.loop = true;
+  s.start(t, (noiseOff++ * .137) % 1.5); s.stop(t + dur + .05);
+  return s;
+}
+function env(c, t, atk, peak, dur) {
+  const g = c.createGain();
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + atk);
+  g.gain.exponentialRampToValueAtTime(.0001, t + Math.max(dur, atk + .01));
+  return g;
+}
+function osc(c, type, f, t, dur) {
+  const o = c.createOscillator();
+  o.type = type;
+  if (f) o.frequency.setValueAtTime(f, t);
+  o.start(t); o.stop(t + dur + .05);
+  return o;
+}
+function filt(c, type, f, q = 1) {
+  const b = c.createBiquadFilter();
+  b.type = type; b.frequency.value = f; b.Q.value = q;
+  return b;
+}
+const SFX = {
+  note(c, out, t, e) {                              // music-box bell
+    const dur = Math.min(e.dur ?? 1.4, e.max ?? 99);
+    const g = env(c, t, .004, e.vol ?? .15, dur);
+    for (const [m, v] of [[1, 1], [2, .32], [3.01, .1]]) {
+      const gg = c.createGain(); gg.gain.value = v;
+      osc(c, 'sine', e.f * m, t, dur).connect(gg).connect(g);
+    }
+    g.connect(out);
+  },
+  bass(c, out, t, e) {
+    const dur = Math.min(e.dur ?? 2, e.max ?? 99);
+    osc(c, 'triangle', e.f, t, dur).connect(env(c, t, .04, .16, dur)).connect(out);
+  },
+  whistle(c, out, t, e) {
+    const dur = Math.min(.6, e.max ?? 99), o = osc(c, 'sine', 900, t, dur);
+    o.frequency.exponentialRampToValueAtTime(2300, t + dur);
+    o.connect(env(c, t, .08, .022, dur)).connect(out);
+  },
+  pop(c, out, t, e) {                               // firework: thump + crackle
+    const lp = filt(c, 'lowpass', 1800);
+    lp.frequency.exponentialRampToValueAtTime(180, t + .8);
+    noise(c, t, 1).connect(lp).connect(env(c, t, .004, e.vol ?? .3, .9)).connect(out);
+    const g2 = c.createGain(), end = t + Math.min(1.3, e.max ?? 99);
+    g2.gain.setValueAtTime(0, t);
+    for (let i = 0; i < 14; i++) {
+      const tt = t + .18 + i * .075 + ((i * 37) % 11) / 400;
+      if (tt > end) break;
+      g2.gain.setValueAtTime(.05 * (1 - i / 14), tt); g2.gain.setValueAtTime(0, tt + .018);
+    }
+    noise(c, t, 1.4).connect(filt(c, 'highpass', 3500)).connect(g2).connect(out);
+  },
+  scratch(c, out, t) {                              // record scratch
+    const bp = filt(c, 'bandpass', 2600, 4), f = bp.frequency;
+    f.setValueAtTime(2600, t); f.exponentialRampToValueAtTime(900, t + .12);
+    f.exponentialRampToValueAtTime(2300, t + .2); f.exponentialRampToValueAtTime(260, t + .42);
+    noise(c, t, .45).connect(bp).connect(env(c, t, .004, 1, .45)).connect(out);
+    const o = osc(c, 'sawtooth', 520, t, .45), of = o.frequency;
+    of.exponentialRampToValueAtTime(250, t + .12); of.exponentialRampToValueAtTime(480, t + .2); of.exponentialRampToValueAtTime(60, t + .42);
+    o.connect(filt(c, 'lowpass', 2400)).connect(env(c, t, .004, .14, .45)).connect(out);
+  },
+  thud(c, out, t, e = {}) {
+    const v = e.vol ?? .9, o = osc(c, 'sine', 140, t, .6);
+    o.frequency.exponentialRampToValueAtTime(40, t + .25);
+    o.connect(env(c, t, .003, v, .55)).connect(out);
+    noise(c, t, .08).connect(filt(c, 'lowpass', 2500)).connect(env(c, t, .001, v * .5, .07)).connect(out);
+  },
+  stamp(c, out, t) {
+    SFX.thud(c, out, t, { vol: .8 });
+    noise(c, t, .12).connect(filt(c, 'bandpass', 1400, 1.2)).connect(env(c, t, .001, .7, .1)).connect(out);
+  },
+  buzz(c, out, t) {                                 // card-declined buzzer
+    for (const f of [98, 104]) {
+      const g = c.createGain();
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.07, t + .01);
+      g.gain.setValueAtTime(.07, t + .5); g.gain.linearRampToValueAtTime(0, t + .56);
+      osc(c, 'square', f, t, .6).connect(filt(c, 'lowpass', 1200)).connect(g).connect(out);
+    }
+  },
+  print(c, out, t, e) {                             // thermal printer
+    const d = e.dur ?? .22, am = c.createGain(), lg = c.createGain(), g = c.createGain();
+    am.gain.value = .5; lg.gain.value = .5;
+    osc(c, 'square', 55, t, d).connect(lg).connect(am.gain);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.05, t + .01);
+    g.gain.setValueAtTime(.05, t + d); g.gain.linearRampToValueAtTime(0, t + d + .02);
+    osc(c, 'square', 1900, t, d).connect(am).connect(filt(c, 'bandpass', 2400, 2)).connect(g).connect(out);
+  },
+  tick(c, out, t) {
+    noise(c, t, .04).connect(filt(c, 'highpass', 2500)).connect(env(c, t, .001, .35, .035)).connect(out);
+  },
+  whoosh(c, out, t, e) {
+    const d = e.dur ?? .3, bp = filt(c, 'bandpass', 300, .9), g = c.createGain();
+    bp.frequency.exponentialRampToValueAtTime(3000, t + d);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(e.vol ?? .25, t + d * .7); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    noise(c, t, d).connect(bp).connect(g).connect(out);
+  },
+  riser(c, out, t) {
+    const o = osc(c, 'sine', 220, t, 1);
+    o.frequency.exponentialRampToValueAtTime(660, t + .9);
+    o.connect(env(c, t, .3, .05, .95)).connect(out);
+  },
+  hit(c, out, t) { SFX.thud(c, out, t, { vol: .6 }); SFX.tick(c, out, t); },
+  boom(c, out, t) {
+    const o = osc(c, 'sine', 70, t, 1.7);
+    o.frequency.exponentialRampToValueAtTime(32, t + 1.2);
+    o.connect(env(c, t, .005, .9, 1.6)).connect(out);
+    const lp = filt(c, 'lowpass', 900);
+    lp.frequency.exponentialRampToValueAtTime(80, t + .6);
+    noise(c, t, .6).connect(lp).connect(env(c, t, .002, .5, .6)).connect(out);
+  },
+};
+function makeBus(c) {
+  const g = c.createGain(), comp = c.createDynamicsCompressor();
+  g.gain.value = .85;
+  comp.threshold.value = -10; comp.knee.value = 6; comp.ratio.value = 6; comp.attack.value = .003; comp.release.value = .2;
+  g.connect(comp).connect(c.destination);
+  return g;
+}
+function schedule(c, bus, events, t0, from) {
+  noiseOff = 0;
+  for (const e of events) if (e.t >= from - .02) SFX[e.type](c, bus, t0 + e.t - from, e);
+}
+function toWav(buf) {
+  const ch = buf.numberOfChannels, n = buf.length, sr = buf.sampleRate;
+  const dv = new DataView(new ArrayBuffer(44 + n * ch * 2));
+  const str = (o, s) => [...s].forEach((x, i) => dv.setUint8(o + i, x.charCodeAt(0)));
+  str(0, 'RIFF'); dv.setUint32(4, 36 + n * ch * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, ch, true);
+  dv.setUint32(24, sr, true); dv.setUint32(28, sr * ch * 2, true); dv.setUint16(32, ch * 2, true); dv.setUint16(34, 16, true);
+  str(36, 'data'); dv.setUint32(40, n * ch * 2, true);
+  const data = Array.from({ length: ch }, (_, i) => buf.getChannelData(i));
+  for (let i = 0, o = 44; i < n; i++) for (let k = 0; k < ch; k++, o += 2) dv.setInt16(o, clamp(data[k][i], -1, 1) * 32767, true);
+  return new Blob([dv], { type: 'audio/wav' });
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Render mode API (used by render.mjs) and the live player.
+   ════════════════════════════════════════════════════════════════════ */
+
+if (PAID_FOR) {
+  const d = $('end-disc');
+  d.textContent = `Paid for by ${PAID_FOR}. Not authorized by any candidate or candidate's committee.`;
+  d.style.display = 'block';
+}
+
+const FONT_FACES = ['400 100px Anton', 'italic 600 100px "Cormorant Garamond"', '400 100px "Great Vibes"',
+  '500 100px "IBM Plex Mono"', '700 100px "IBM Plex Mono"', '800 100px Inter', '700 100px Oswald'];
+window.__ready = Promise.all(FONT_FACES.map(f => document.fonts.load(f, 'AБ$'))).then(() => document.fonts.ready);
+window.__duration = cutDuration(cutName);
+window.__seek = ct => renderAt(ct);
+window.__renderAudio = async () => {
+  const sr = 48000, c = new OfflineAudioContext(2, Math.ceil(sr * cutDuration(cutName)), sr);
+  schedule(c, makeBus(c), cutEvents(cutName), 0, 0);
+  const blob = toWav(await c.startRendering());
+  return new Promise(res => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result.split(',')[1]);
+    fr.readAsDataURL(blob);
+  });
+};
+
+function fit() {
+  const s = Math.min(innerWidth / W, innerHeight / H);
+  $('frame').style.transform = `scale(${s})`;
+}
+addEventListener('resize', fit);
+fit();
+
+if (RENDER) {
+  document.body.classList.add('render');
+  renderAt(0);
+} else {
+  const POSTER_T = 21.3;
+  let playing = false, cutT = 0, origin = 0, soundOn = true, actx = null, bus = null, clockAudio = false;
+  const now = () => clockAudio ? actx.currentTime : performance.now() / 1000;
+  const syncChips = () => qa('#cuts button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cut === cutName));
+  const setProg = () => { $('prog').firstElementChild.style.width = `${cutT / cutDuration(cutName) * 100}%`; };
+
+  function stopAudio() { if (bus) { bus.disconnect(); bus = null; } }
+  function play() {
+    if (cutT >= cutDuration(cutName) - .01) cutT = 0;
+    playing = true;
+    document.body.classList.add('playing');
+    clockAudio = false;
+    if (soundOn) {
+      try {
+        actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+        actx.resume();
+        stopAudio();
+        bus = makeBus(actx);
+        const t0 = actx.currentTime + .06;
+        schedule(actx, bus, cutEvents(cutName), t0, cutT);
+        origin = t0 - cutT;
+        clockAudio = true;
+      } catch (err) { clockAudio = false; }
+    }
+    if (!clockAudio) origin = now() - cutT;
+    requestAnimationFrame(tick);
+  }
+  function pause() {
+    playing = false;
+    document.body.classList.remove('playing');
+    stopAudio();
+  }
+  function tick() {
+    if (!playing) return;
+    cutT = Math.max(0, now() - origin);
+    const dur = cutDuration(cutName);
+    if (cutT >= dur) { cutT = dur; renderAt(dur - 1e-3); setProg(); pause(); return; }
+    renderAt(cutT); setProg();
+    requestAnimationFrame(tick);
+  }
+
+  $('cover').addEventListener('click', play);
+  qa('#cuts button').forEach(b => b.addEventListener('click', ev => {
+    ev.stopPropagation();
+    cutName = b.dataset.cut; cutT = 0; syncChips(); setProg(); renderAt(0); play();
+  }));
+  $('snd').addEventListener('click', ev => {
+    ev.stopPropagation();
+    soundOn = !soundOn;
+    $('snd').textContent = soundOn ? 'Sound on' : 'Sound off';
+    $('snd').setAttribute('aria-pressed', soundOn);
+  });
+  $('frame').addEventListener('click', () => { if (playing) pause(); });
+  addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); playing ? pause() : play(); } });
+
+  syncChips();
+  window.__ready.then(() => renderMaster(POSTER_T));
+}
+</script>
+</body>
+</html>
